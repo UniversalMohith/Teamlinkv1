@@ -1,11 +1,14 @@
 <p align="center">
   <img src="https://img.shields.io/badge/TeamLink-Project%20Management-4F46E5?style=for-the-badge&logoColor=white" alt="TeamLink" />
+  <br />
+  <img src="https://img.shields.io/badge/Status-Prototype-F59E0B?style=for-the-badge" alt="Prototype" />
 </p>
 
 <h1 align="center">TeamLink</h1>
 
 <p align="center">
-  A modern project management and team collaboration app — think Jira meets Slack, built with React and Supabase.
+  A modern project management and team collaboration app — think Jira meets Slack, built with React and Supabase.<br />
+  <sub>This is a working prototype / proof of concept — not a production-ready release.</sub>
 </p>
 
 <p align="center">
@@ -21,7 +24,9 @@
 
 ## Overview
 
-TeamLink is a full-featured project management and team collaboration platform. It combines kanban boards, real-time team chat, friend connections, and notifications into a single unified workspace — designed to help teams plan, track, and communicate without switching between tools.
+TeamLink is a prototype project management and team collaboration platform. It combines kanban boards, real-time team chat, friend connections, and notifications into a single unified workspace — designed to help teams plan, track, and communicate without switching between tools.
+
+> **Note:** This is an early prototype demonstrating core functionality. Some features are still under active development and may have rough edges.
 
 **Live demo:** [teamlinkv1.vercel.app](https://teamlinkv1.vercel.app)
 
@@ -180,6 +185,20 @@ The build output is in the `dist/` directory, ready for any static hosting provi
 ## Design
 
 The original UI design is available on [Figma](https://www.figma.com/design/yXjWByEDrkPdLRowI8zF1D/Teamlink).
+
+---
+
+## Status
+
+This is a **prototype / v0.1** — built to validate the core concept. Known areas still in progress:
+
+- Real-time messaging (currently uses polling)
+- File sharing within chat
+- Advanced project permissions and roles
+- Mobile responsive layout
+- Performance optimisation for large boards
+
+Contributions and feedback are welcome.
 
 ---
 

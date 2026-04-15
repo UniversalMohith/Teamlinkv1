@@ -3,13 +3,13 @@ import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import {
   Plus, MoreVertical, Calendar, User, ArrowLeft, MessageSquare,
-  Users, Trash2, Layout, Sun, Moon, Monitor,
+  Users, Trash2, Layout, Sun, Moon, Monitor, ChevronLeft, ChevronRight, FolderOpen,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { ConnectionsPopup } from './ConnectionsPopup';
 import { useTheme } from './ThemeContext';
-import { taskAPI, handleApiError } from '../../utils/api';
+import { taskAPI, projectAPI, handleApiError } from '../../utils/api';
 import { toast } from 'sonner';
 
 interface User {
@@ -188,6 +188,9 @@ function ColumnSkeleton() {
 
 export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToProfile, onNavigateToSettings, onNavigateToNotifications, onLogout }: KanbanBoardProps) {
   const { theme, setTheme } = useTheme();
+  const [projects, setProjects] = useState<any[]>([]);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(projectId);
   const [columns, setColumns] = useState<Column[]>([
     { id: 'todo', title: 'To Do', tasks: [] },
     { id: 'in-progress', title: 'In Progress', tasks: [] },
@@ -206,15 +209,30 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
   const [detailStatus, setDetailStatus] = useState<Task['status']>('todo');
   const [detailDueDate, setDetailDueDate] = useState('');
 
+  // Load projects for sidebar
+  useEffect(() => {
+    const loadProjects = async () => {
+      try {
+        const data = await projectAPI.getAll(user.id);
+        setProjects(data || []);
+      } catch (error) {
+        // silently fail for sidebar
+      }
+    };
+    if (user?.id) loadProjects();
+  }, [user?.id]);
+
+  // Load tasks for active project
   useEffect(() => {
     const loadTasks = async () => {
-      if (!projectId) {
+      const pid = activeProjectId || projectId;
+      if (!pid) {
         setIsLoading(false);
         return;
       }
       try {
         setIsLoading(true);
-        const tasks = await taskAPI.getByProject(projectId);
+        const tasks = await taskAPI.getByProject(pid);
         setColumns([
           { id: 'todo', title: 'To Do', tasks: tasks.filter((t: any) => t.status === 'todo') },
           { id: 'in-progress', title: 'In Progress', tasks: tasks.filter((t: any) => t.status === 'in-progress') },
@@ -227,7 +245,7 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
       }
     };
     loadTasks();
-  }, [projectId]);
+  }, [activeProjectId, projectId]);
 
   useEffect(() => {
     if (selectedTask) {
@@ -266,8 +284,8 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
       toast.success('Task moved');
     } catch (error) {
       handleApiError(error, 'Failed to update task');
-      if (projectId) {
-        const tasks = await taskAPI.getByProject(projectId);
+      if (currentProjectId) {
+        const tasks = await taskAPI.getByProject(currentProjectId);
         setColumns([
           { id: 'todo', title: 'To Do', tasks: tasks.filter((t: any) => t.status === 'todo') },
           { id: 'in-progress', title: 'In Progress', tasks: tasks.filter((t: any) => t.status === 'in-progress') },
@@ -282,12 +300,20 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
     setShowTaskDetail(true);
   };
 
+  const currentProjectId = activeProjectId || projectId;
+
+  const handleSwitchProject = (pid: string) => {
+    setActiveProjectId(pid);
+    setShowTaskDetail(false);
+    setSelectedTask(null);
+  };
+
   const handleAddTask = async (columnId: string) => {
-    if (!projectId) { toast.error('No project selected'); return; }
+    if (!currentProjectId) { toast.error('No project selected'); return; }
     try {
       const newTask = await taskAPI.create({
         title: 'New Task',
-        project_id: projectId,
+        project_id: currentProjectId,
         status: columnId,
         description: 'Click to edit task details',
       });
@@ -303,11 +329,11 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
   };
 
   const handleNewCardClick = async () => {
-    if (!projectId) { toast.error('No project selected'); return; }
+    if (!currentProjectId) { toast.error('No project selected'); return; }
     try {
       const newTask = await taskAPI.create({
         title: 'New Task',
-        project_id: projectId,
+        project_id: currentProjectId,
         status: 'todo',
         description: 'Click to edit task details',
       });
@@ -391,10 +417,97 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
   const ThemeIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : Monitor;
 
   const totalTasks = columns.reduce((acc, col) => acc + col.tasks.length, 0);
+  const activeProject = projects.find(p => p.id === currentProjectId);
 
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+        {/* Project Sidebar */}
+        <div
+          className={`${isSidebarCollapsed ? 'w-[72px]' : 'w-64'} bg-slate-900 dark:bg-gray-950 text-white flex flex-col transition-all duration-300 relative flex-shrink-0`}
+        >
+          <button
+            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            className="absolute -right-3 top-20 w-6 h-6 bg-white dark:bg-gray-700 rounded-full shadow-lg flex items-center justify-center text-slate-900 dark:text-white hover:scale-110 transition-transform z-10"
+          >
+            {isSidebarCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+          </button>
+
+          {/* Logo */}
+          <div className="p-4 flex items-center gap-3 border-b border-white/10">
+            <div className="w-9 h-9 bg-[rgb(var(--color-accent-primary))] rounded-lg flex items-center justify-center flex-shrink-0">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path d="M3 3L21 12L3 21V3Z" fill="white" />
+              </svg>
+            </div>
+            {!isSidebarCollapsed && <span className="font-bold text-lg tracking-tight">TeamLink</span>}
+          </div>
+
+          {/* Section label */}
+          {!isSidebarCollapsed && (
+            <div className="px-4 pt-4 pb-2">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Kanban Board</p>
+            </div>
+          )}
+
+          {/* Project list */}
+          <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
+            {projects.length === 0 && !isSidebarCollapsed && (
+              <div className="text-center py-6">
+                <FolderOpen className="w-8 h-8 text-gray-500 mx-auto mb-2" />
+                <p className="text-xs text-gray-400">No projects yet</p>
+              </div>
+            )}
+            {projects.map(project => {
+              const isActive = project.id === currentProjectId;
+              const dueDate = project.due_date
+                ? new Date(project.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                : null;
+              return (
+                <button
+                  key={project.id}
+                  onClick={() => handleSwitchProject(project.id)}
+                  className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-all duration-200
+                    ${isSidebarCollapsed ? 'flex justify-center' : ''}
+                    ${isActive
+                      ? 'bg-[rgb(var(--color-accent-primary))] text-white shadow-lg shadow-[rgb(var(--color-accent-primary))]/20'
+                      : 'text-gray-400 hover:text-white hover:bg-white/5'
+                    }`}
+                  title={isSidebarCollapsed ? project.title : undefined}
+                >
+                  {isSidebarCollapsed ? (
+                    <FolderOpen className="w-5 h-5 flex-shrink-0" />
+                  ) : (
+                    <div>
+                      <p className="font-medium truncate">{project.title}</p>
+                      {dueDate && (
+                        <p className={`text-xs mt-0.5 ${isActive ? 'text-white/70' : 'text-gray-500'}`}>
+                          Due {dueDate}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* User info at bottom */}
+          <div className="p-3 border-t border-white/10">
+            <div className={`flex items-center gap-3 ${isSidebarCollapsed ? 'justify-center' : ''}`}>
+              <div className="w-9 h-9 bg-[rgb(var(--color-accent-primary))] rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
+                {user.avatar || user.name?.charAt(0) || 'U'}
+              </div>
+              {!isSidebarCollapsed && (
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-white truncate">{user.name || 'User'}</p>
+                  <p className="text-xs text-gray-400 truncate">{user.email}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* Main Content */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* Header */}
@@ -404,8 +517,8 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
                 <ArrowLeft className="w-5 h-5" />
               </Button>
               <div>
-                <h1 className="text-lg font-semibold text-gray-900 dark:text-white">Kanban Board</h1>
-                <p className="text-xs text-gray-500 dark:text-gray-400">{totalTasks} tasks</p>
+                <h1 className="text-lg font-semibold text-gray-900 dark:text-white">{activeProject?.title || 'Kanban Board'}</h1>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{totalTasks} task{totalTasks !== 1 ? 's' : ''}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -416,7 +529,7 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
               >
                 <ThemeIcon className="w-5 h-5 text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-200 transition-colors" />
               </button>
-              <Button variant="outline" size="sm" onClick={() => projectId && onOpenChat(projectId)} className="rounded-lg" disabled={!projectId}>
+              <Button variant="outline" size="sm" onClick={() => currentProjectId && onOpenChat(currentProjectId)} className="rounded-lg" disabled={!currentProjectId}>
                 <MessageSquare className="w-4 h-4 mr-1.5" />
                 Chat
               </Button>
@@ -426,7 +539,7 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
               >
                 <Users className="w-4 h-4 text-gray-500 dark:text-gray-400 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors" />
               </button>
-              <Button size="sm" className="btn-accent rounded-lg" onClick={handleNewCardClick} disabled={!projectId}>
+              <Button size="sm" className="btn-accent rounded-lg" onClick={handleNewCardClick} disabled={!currentProjectId}>
                 <Plus className="w-4 h-4 mr-1.5" />
                 New Card
               </Button>
@@ -441,7 +554,7 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
                 <ColumnSkeleton />
                 <ColumnSkeleton />
               </div>
-            ) : !projectId ? (
+            ) : !currentProjectId ? (
               <div className="flex flex-col items-center justify-center h-full text-center">
                 <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
                   <Layout className="w-8 h-8 text-gray-400" />
