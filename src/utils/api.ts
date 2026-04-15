@@ -1141,3 +1141,11 @@ export const fileAPI = {
     }
   },
 };
+
+// ==================== ERROR HANDLER ====================
+
+export const handleApiError = (error: any, fallbackMessage: string = 'Something went wrong') => {
+  const message = error?.message || fallbackMessage;
+  console.error(fallbackMessage, error);
+  toast.error(message);
+};
