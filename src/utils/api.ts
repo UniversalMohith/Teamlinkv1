@@ -25,12 +25,10 @@ export const authAPI = {
         throw new Error(data.error || 'Signup failed');
       }
 
-      // Store access token in localStorage if provided
       if (data.session?.access_token) {
         localStorage.setItem('access_token', data.session.access_token);
       }
 
-      // Transform backend user format to match frontend User type
       const user: User = {
         id: data.user.id,
         email: data.user.email,
@@ -66,17 +64,14 @@ export const authAPI = {
         throw new Error(data.error || 'Signin failed');
       }
 
-      // Store access token in localStorage
       if (data.session?.access_token) {
         localStorage.setItem('access_token', data.session.access_token);
       }
 
-      // Parse name into first_name and last_name
       const nameParts = (data.user.name || '').split(' ');
       const firstName = nameParts[0] || '';
       const lastName = nameParts.slice(1).join(' ') || '';
 
-      // Transform backend user format to match frontend User type
       const user: User = {
         id: data.user.id,
         email: data.user.email,
@@ -135,12 +130,10 @@ export const authAPI = {
         return { user: null, session: null };
       }
 
-      // Parse name into first_name and last_name
       const nameParts = (data.user.name || '').split(' ');
       const firstName = nameParts[0] || '';
       const lastName = nameParts.slice(1).join(' ') || '';
 
-      // Transform backend user format to match frontend User type
       const user: User = {
         id: data.user.id,
         email: data.user.email,
@@ -177,12 +170,10 @@ export const authAPI = {
         throw new Error(data.error || 'OAuth login failed');
       }
 
-      // Parse name into first_name and last_name
       const nameParts = (data.user.name || '').split(' ');
       const firstName = nameParts[0] || '';
       const lastName = nameParts.slice(1).join(' ') || '';
 
-      // Transform backend user format to match frontend User type
       const user: User = {
         id: data.user.id,
         email: data.user.email,
@@ -205,7 +196,6 @@ export const authAPI = {
 // ==================== USER API ====================
 
 export const userAPI = {
-  // FIX BUG-03: was incorrectly using publicAnonKey — must use stored access_token
   getProfile: async (userId: string) => {
     try {
       const accessToken = localStorage.getItem('access_token');
@@ -223,7 +213,6 @@ export const userAPI = {
         throw new Error(data.error || 'Failed to get user profile');
       }
 
-      // Parse name into first_name and last_name
       const nameParts = (data.user.name || '').split(' ');
       const firstName = nameParts[0] || '';
       const lastName = nameParts.slice(1).join(' ') || '';
@@ -248,7 +237,6 @@ export const userAPI = {
     try {
       const accessToken = localStorage.getItem('access_token');
 
-      // Transform frontend User format to backend format
       const backendUpdates: any = {};
       if (updates.first_name || updates.last_name) {
         backendUpdates.name = `${updates.first_name || ''} ${updates.last_name || ''}`.trim();
@@ -256,8 +244,6 @@ export const userAPI = {
       if (updates.status) backendUpdates.status = updates.status;
       if (updates.role) backendUpdates.role = updates.role;
       if (updates.avatar_initials) backendUpdates.avatar = updates.avatar_initials;
-
-      // Pass through additional fields
       if (updates.phone !== undefined) backendUpdates.phone = updates.phone;
       if (updates.bio !== undefined) backendUpdates.bio = updates.bio;
       if (updates.company !== undefined) backendUpdates.company = updates.company;
@@ -278,7 +264,6 @@ export const userAPI = {
         throw new Error(data.error || 'Failed to update profile');
       }
 
-      // Parse name into first_name and last_name
       const nameParts = (data.user.name || '').split(' ');
       const firstName = nameParts[0] || '';
       const lastName = nameParts.slice(1).join(' ') || '';
@@ -318,7 +303,6 @@ export const userAPI = {
         throw new Error(data.error || 'Failed to update status');
       }
 
-      // Parse name into first_name and last_name
       const nameParts = (data.user.name || '').split(' ');
       const firstName = nameParts[0] || '';
       const lastName = nameParts.slice(1).join(' ') || '';
@@ -356,7 +340,6 @@ export const userAPI = {
         throw new Error(data.error || 'Search failed');
       }
 
-      // Transform backend users to frontend format
       return data.users.map((user: any) => {
         const nameParts = (user.name || '').split(' ');
         const firstName = nameParts[0] || '';
@@ -396,7 +379,6 @@ export const userAPI = {
         throw new Error(data.error || 'Failed to get users');
       }
 
-      // Transform backend users to frontend format
       return data.users.map((user: any) => {
         const nameParts = (user.name || '').split(' ');
         const firstName = nameParts[0] || '';
@@ -423,7 +405,6 @@ export const userAPI = {
 // ==================== CONNECTIONS/FRIENDS API ====================
 
 export const connectionsAPI = {
-  // FIX BUG-03: was incorrectly using publicAnonKey — must use stored access_token
   getFriends: async (userId: string) => {
     try {
       const accessToken = localStorage.getItem('access_token');
@@ -441,7 +422,6 @@ export const connectionsAPI = {
         throw new Error(data.error || 'Failed to get friends');
       }
 
-      // Transform backend users to frontend format
       return data.friends.map((friend: any) => {
         const nameParts = (friend.name || '').split(' ');
         const firstName = nameParts[0] || '';
@@ -785,11 +765,26 @@ export const taskAPI = {
 };
 
 // ==================== TEAM API ====================
+// Teams are backed by Projects — each project acts as a chat channel.
+// teamAPI.getAll fetches projects and maps them to channel objects so
+// ChatInterface has a real list to render instead of [].
 
 export const teamAPI = {
   getAll: async (userId: string) => {
-    // Teams are not fully implemented in backend yet - return empty array
-    return [];
+    try {
+      const projects = await projectAPI.getAll(userId);
+      // Map every project to a lightweight channel descriptor
+      return (projects || []).map((p: any) => ({
+        id: p.id,
+        name: p.title || p.name || 'Unnamed Project',
+        description: p.description || '',
+        color: p.color || 'bg-blue-500',
+        memberCount: p.memberCount || 1,
+      }));
+    } catch (error: any) {
+      console.error('Get teams (projects) error:', error);
+      return [];
+    }
   },
 
   getById: async (teamId: string) => {
@@ -815,18 +810,14 @@ export const teamAPI = {
       };
     } catch (error: any) {
       console.error('Get team error:', error);
-      throw error;
+      // Return empty members rather than crashing
+      return { id: teamId, members: [] };
     }
   },
 
   create: async (userId: string, name: string, description?: string) => {
-    // Teams creation not implemented in backend yet - return mock
-    return {
-      id: `team-${Date.now()}`,
-      name,
-      description,
-      created_by: userId,
-    };
+    // Create a project that doubles as a chat channel
+    return projectAPI.create(userId, name, undefined, description);
   },
 
   addMember: async (teamId: string, userId: string, role: string = 'Member') => {
@@ -853,7 +844,6 @@ export const teamAPI = {
   },
 
   removeMember: async (teamId: string, userId: string) => {
-    // Team member removal not implemented in backend yet
     console.warn('Team member removal not yet implemented');
   },
 };
@@ -911,9 +901,34 @@ export const messagesAPI = {
     }
   },
 
-  subscribeToTeam: (teamId: string, callback: (message: any) => void) => {
-    // Real-time subscriptions not implemented - use polling instead
-    return null;
+  // Poll every 5 seconds for new messages. Returns a cleanup function.
+  subscribeToTeam: (teamId: string, callback: (messages: any[]) => void): (() => void) => {
+    let active = true;
+
+    const poll = async () => {
+      if (!active) return;
+      try {
+        const accessToken = localStorage.getItem('access_token');
+        const response = await fetch(`${API_URL}/chat/${teamId}/messages`, {
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${accessToken}` },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (active) callback(data.messages || []);
+        }
+      } catch (_) {
+        // silently ignore poll errors
+      }
+    };
+
+    const interval = setInterval(poll, 5000);
+
+    // Return cleanup
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
   },
 };
 
@@ -1032,9 +1047,33 @@ export const notificationsAPI = {
     }
   },
 
-  subscribeToUser: (userId: string, callback: (notification: any) => void) => {
-    // Real-time subscriptions not implemented - use polling instead
-    return null;
+  // Poll every 30 seconds for new notifications. Returns a cleanup function.
+  subscribeToUser: (userId: string, callback: (notifications: any[]) => void): (() => void) => {
+    let active = true;
+
+    const poll = async () => {
+      if (!active) return;
+      try {
+        const accessToken = localStorage.getItem('access_token');
+        const response = await fetch(`${API_URL}/notifications/${userId}`, {
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${accessToken}` },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (active) callback(data.notifications || []);
+        }
+      } catch (_) {
+        // silently ignore poll errors
+      }
+    };
+
+    const interval = setInterval(poll, 30000);
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
   },
 };
 
@@ -1062,7 +1101,6 @@ export const searchAPI = {
         throw new Error(data.error || 'Search failed');
       }
 
-      // Transform users
       const users = (data.users || []).map((user: any) => {
         const nameParts = (user.name || '').split(' ');
         const firstName = nameParts[0] || '';
@@ -1125,7 +1163,6 @@ export const fileAPI = {
     }
   },
 
-  // FIX BUG-09: corrected bucket name from 'teamlink-files' to 'make-aece0672-files'
   delete: async (filePath: string) => {
     try {
       const { error } = await supabase.storage
