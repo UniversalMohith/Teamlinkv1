@@ -205,12 +205,15 @@ export const authAPI = {
 // ==================== USER API ====================
 
 export const userAPI = {
+  // FIX BUG-03: was incorrectly using publicAnonKey — must use stored access_token
   getProfile: async (userId: string) => {
     try {
+      const accessToken = localStorage.getItem('access_token');
+
       const response = await fetch(`${API_URL}/user/${userId}`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${publicAnonKey}`,
+          'Authorization': `Bearer ${accessToken}`,
         },
       });
 
@@ -420,12 +423,15 @@ export const userAPI = {
 // ==================== CONNECTIONS/FRIENDS API ====================
 
 export const connectionsAPI = {
+  // FIX BUG-03: was incorrectly using publicAnonKey — must use stored access_token
   getFriends: async (userId: string) => {
     try {
+      const accessToken = localStorage.getItem('access_token');
+
       const response = await fetch(`${API_URL}/user/${userId}/friends`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${publicAnonKey}`,
+          'Authorization': `Bearer ${accessToken}`,
         },
       });
 
@@ -1079,15 +1085,15 @@ export const searchAPI = {
       };
     } catch (error: any) {
       console.error('Global search error:', error);
-      return { users: [], teams: [], projects: [] };
+      throw error;
     }
   },
 };
 
-// ==================== FILE UPLOAD API ====================
+// ==================== FILE API ====================
 
 export const fileAPI = {
-  upload: async (file: File, userId: string) => {
+  upload: async (file: File) => {
     try {
       const accessToken = localStorage.getItem('access_token');
 
@@ -1119,17 +1125,19 @@ export const fileAPI = {
     }
   },
 
+  // FIX BUG-09: corrected bucket name from 'teamlink-files' to 'make-aece0672-files'
   delete: async (filePath: string) => {
-    const { error } = await supabase.storage
-      .from('teamlink-files')
-      .remove([filePath]);
+    try {
+      const { error } = await supabase.storage
+        .from('make-aece0672-files')
+        .remove([filePath]);
 
-    if (error) throw error;
+      if (error) {
+        throw new Error(error.message || 'File deletion failed');
+      }
+    } catch (error: any) {
+      console.error('File delete error:', error);
+      throw error;
+    }
   },
-};
-
-// Helper to handle errors with toast
-export const handleApiError = (error: any, defaultMessage: string = 'An error occurred') => {
-  console.error(error);
-  toast.error(error.message || defaultMessage);
 };
