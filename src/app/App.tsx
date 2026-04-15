@@ -7,6 +7,7 @@ import { ChatInterface } from './components/ChatInterface';
 import { ProfilePage } from './components/ProfilePage';
 import { SettingsPage } from './components/SettingsPage';
 import { NotificationsPage } from './components/NotificationsPage';
+import { UniversalChat } from './components/UniversalChat';
 import { ThemeProvider } from './components/ThemeContext';
 import { authAPI, userAPI, handleApiError } from '../utils/api';
 import { User } from '../utils/supabase';
@@ -264,11 +265,18 @@ export default function App() {
           />
         )}
         {currentPage === 'notifications' && currentUser && (
-          <NotificationsPage 
+          <NotificationsPage
             user={currentUser}
             onBack={() => navigateTo('dashboard')}
             onNavigateToProfile={() => navigateTo('profile')}
             onLogout={handleLogout}
+          />
+        )}
+        {/* Floating chat bubble on non-chat, non-dashboard logged-in pages */}
+        {isLoggedIn && currentUser && currentPage !== 'chat' && currentPage !== 'dashboard' && currentPage !== 'landing' && currentPage !== 'login' && currentPage !== 'signup' && (
+          <UniversalChat
+            user={currentUser}
+            onNavigateToChat={() => navigateTo('chat')}
           />
         )}
       </div>

@@ -416,7 +416,7 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
               >
                 <ThemeIcon className="w-5 h-5 text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-200 transition-colors" />
               </button>
-              <Button variant="outline" size="sm" onClick={() => onOpenChat('team-1')} className="rounded-lg">
+              <Button variant="outline" size="sm" onClick={() => projectId && onOpenChat(projectId)} className="rounded-lg" disabled={!projectId}>
                 <MessageSquare className="w-4 h-4 mr-1.5" />
                 Chat
               </Button>

@@ -14,7 +14,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter,
   DialogHeader, DialogTitle,
 } from './ui/dialog';
-import { ChatPopup } from './ChatPopup';
+import { UniversalChat } from './UniversalChat';
 import { ConnectionsPopup } from './ConnectionsPopup';
 import { useTheme } from './ThemeContext';
 import { useState, useEffect, useRef } from 'react';
@@ -115,7 +115,6 @@ export function Dashboard({
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
   const [stats, setStats] = useState({ activeProjects: 0, totalTasks: 0, completedTasks: 0 });
   const [isLoading, setIsLoading] = useState(true);
-  const [isChatPopupOpen, setIsChatPopupOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isNewProjectDialogOpen, setIsNewProjectDialogOpen] = useState(false);
   const [newProjectTitle, setNewProjectTitle] = useState('');
@@ -125,7 +124,6 @@ export function Dashboard({
 
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   const [connectionsCount, setConnectionsCount] = useState(0);
-  const [unreadChatCount] = useState(0);
 
   const userIdRef = useRef(user?.id);
   useEffect(() => { userIdRef.current = user?.id; }, [user?.id]);
@@ -310,15 +308,10 @@ export function Dashboard({
 
             {/* Chat */}
             <button
-              onClick={() => setIsChatPopupOpen(true)}
+              onClick={onNavigateToChat}
               className="relative p-2.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-200 group"
             >
               <MessageCircle className="w-5 h-5 text-gray-500 dark:text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" />
-              {unreadChatCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-green-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                  {unreadChatCount}
-                </span>
-              )}
             </button>
 
             {/* Connections */}
@@ -577,7 +570,7 @@ export function Dashboard({
         </div>
       </div>
 
-      <ChatPopup user={user} isOpen={isChatPopupOpen} onClose={() => setIsChatPopupOpen(false)} />
+      <UniversalChat user={user} onNavigateToChat={onNavigateToChat} />
       <ConnectionsPopup user={user} isOpen={isConnectionsPopupOpen} onClose={() => setIsConnectionsPopupOpen(false)} />
 
       {/* New Project Dialog */}
