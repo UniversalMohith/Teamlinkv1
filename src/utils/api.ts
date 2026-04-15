@@ -1,6 +1,6 @@
 import { supabase, getCurrentUser, User } from './supabase';
 import { toast } from 'sonner';
-import { projectId, publicAnonKey } from '../../utils/supabase/info';
+import { projectId, publicAnonKey } from './info';
 
 const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-aece0672`;
 
