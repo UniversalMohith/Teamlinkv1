@@ -10,6 +10,7 @@ The Dashboard has been successfully updated to use **direct Supabase client acce
 - Projects are now fetched from Supabase using `projectAPI.getAll(user.id)`
 - Dashboard stats (Total Tasks, Active Projects, Completed Tasks) loaded via `projectAPI.getStats(user.id)`
 - Recent notifications loaded via `notificationsAPI.getRecent(user.id, 5)`
+- 
 
 #### 2. **Project Creation** ✅
 - "New Project" button now creates real projects in Supabase
