@@ -29,17 +29,18 @@ function resolveIsDark(theme: Theme): boolean {
   return getSystemDark();
 }
 
-// Compute initial isDark synchronously so React state matches the DOM
-// that the blocking inline script in index.html already set up.
+// Compute initial isDark synchronously — reads real system preference
 const _initialIsDark = resolveIsDark(_persistedTheme);
 
-// Apply synchronously before first render (belt-and-suspenders alongside index.html script)
+// Apply to DOM immediately before first render to avoid flash
 if (typeof document !== 'undefined') {
   if (_initialIsDark) {
     document.documentElement.classList.add('dark');
   } else {
     document.documentElement.classList.remove('dark');
   }
+  // Set a meta color-scheme so the browser native UI matches
+  document.documentElement.style.colorScheme = _initialIsDark ? 'dark' : 'light';
 }
 
 const accentColors = {
@@ -115,7 +116,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         } else {
           document.documentElement.classList.remove('dark');
         }
-        // Re-apply accent vars so dark-mode variants update instantly
+        document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
         applyAccentVars(_persistedAccent);
       }
     };
@@ -134,6 +135,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     } else {
       document.documentElement.classList.remove('dark');
     }
+    document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
   };
 
   const setAccentColor = (color: AccentColor) => {
@@ -145,12 +147,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const root = document.documentElement;
 
-    // Keep .dark class in sync (covers mount + every subsequent change)
     if (isDark) {
       root.classList.add('dark');
     } else {
       root.classList.remove('dark');
     }
+    root.style.colorScheme = isDark ? 'dark' : 'light';
 
     applyAccentVars(accentColor);
   }, [theme, accentColor, isDark]);

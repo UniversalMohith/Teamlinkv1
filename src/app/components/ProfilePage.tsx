@@ -87,15 +87,15 @@ export function ProfilePage({ user, onBack, onNavigateToSettings, onLogout, onUs
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200">
+      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={onBack}>
               <ArrowLeft className="w-5 h-5" />
             </Button>
-            <h1 className="text-xl font-semibold">Profile</h1>
+            <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Profile</h1>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={onNavigateToSettings}>
@@ -112,7 +112,7 @@ export function ProfilePage({ user, onBack, onNavigateToSettings, onLogout, onUs
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Profile Card */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
               {/* Profile Picture */}
               <div className="flex flex-col items-center">
                 <div className="relative group">
@@ -124,44 +124,44 @@ export function ProfilePage({ user, onBack, onNavigateToSettings, onLogout, onUs
                   </button>
                 </div>
 
-                <h2 className="text-2xl font-bold text-gray-900 mt-4">{user.name}</h2>
-                <p className="text-gray-600 mt-1">{user.role}</p>
-                
-                <div className="flex items-center gap-2 mt-3 text-sm text-gray-500">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-4">{user.name}</h2>
+                <p className="text-gray-600 dark:text-gray-400 mt-1">{user.role}</p>
+
+                <div className="flex items-center gap-2 mt-3 text-sm text-gray-500 dark:text-gray-400">
                   <Calendar className="w-4 h-4" />
                   <span>Joined {user.joinDate}</span>
                 </div>
               </div>
 
               {/* Contact Info */}
-              <div className="mt-6 pt-6 border-t border-gray-200 space-y-3">
+              <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700 space-y-3">
                 <div className="flex items-center gap-3 text-sm">
                   <Mail className="w-4 h-4 text-gray-400" />
-                  <span className="text-gray-700">{user.email}</span>
+                  <span className="text-gray-700 dark:text-gray-300">{user.email}</span>
                 </div>
                 <div className="flex items-center gap-3 text-sm">
                   <MapPin className="w-4 h-4 text-gray-400" />
-                  <span className="text-gray-700">San Francisco, CA</span>
+                  <span className="text-gray-700 dark:text-gray-300">San Francisco, CA</span>
                 </div>
               </div>
 
               {/* Stats */}
-              <div className="mt-6 pt-6 border-t border-gray-200 space-y-4">
+              <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700 space-y-4">
                 {stats.map((stat, index) => {
                   const Icon = stat.icon;
                   return (
                     <div key={index} className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Icon className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm text-gray-600">{stat.label}</span>
+                        <span className="text-sm text-gray-600 dark:text-gray-400">{stat.label}</span>
                       </div>
-                      <span className="text-lg font-semibold text-gray-900">{stat.value}</span>
+                      <span className="text-lg font-semibold text-gray-900 dark:text-white">{stat.value}</span>
                     </div>
                   );
                 })}
               </div>
 
-              <Button 
+              <Button
                 className="w-full mt-6 bg-blue-600 hover:bg-blue-700"
                 onClick={() => setIsEditing(!isEditing)}
               >
@@ -174,7 +174,7 @@ export function ProfilePage({ user, onBack, onNavigateToSettings, onLogout, onUs
           {/* Right Column - Tabs */}
           <div className="lg:col-span-2">
             <Tabs defaultValue="overview" className="space-y-6">
-              <TabsList className="bg-white border border-gray-200">
+              <TabsList className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="projects">Projects</TabsTrigger>
                 <TabsTrigger value="activity">Activity</TabsTrigger>
@@ -184,46 +184,46 @@ export function ProfilePage({ user, onBack, onNavigateToSettings, onLogout, onUs
               {/* Overview Tab */}
               <TabsContent value="overview" className="space-y-6">
                 {isEditing ? (
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                    <h3 className="text-lg font-semibold mb-4">Edit Profile Information</h3>
+                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                    <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Edit Profile Information</h3>
                     <div className="space-y-4">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <Label htmlFor="firstName">First Name</Label>
+                          <Label htmlFor="firstName" className="text-gray-900 dark:text-gray-200">First Name</Label>
                           <Input
                             id="firstName"
                             value={editedFirstName}
                             onChange={(e) => setEditedFirstName(e.target.value)}
-                            className="mt-1"
+                            className="mt-1 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                           />
                         </div>
                         <div>
-                          <Label htmlFor="lastName">Last Name</Label>
+                          <Label htmlFor="lastName" className="text-gray-900 dark:text-gray-200">Last Name</Label>
                           <Input
                             id="lastName"
                             value={editedLastName}
                             onChange={(e) => setEditedLastName(e.target.value)}
-                            className="mt-1"
+                            className="mt-1 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                           />
                         </div>
                       </div>
                       <div>
-                        <Label htmlFor="role">Role</Label>
+                        <Label htmlFor="role" className="text-gray-900 dark:text-gray-200">Role</Label>
                         <Input
                           id="role"
                           value={editedRole}
                           onChange={(e) => setEditedRole(e.target.value)}
-                          className="mt-1"
+                          className="mt-1 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                         />
                       </div>
                       <div>
-                        <Label htmlFor="bio">Bio</Label>
+                        <Label htmlFor="bio" className="text-gray-900 dark:text-gray-200">Bio</Label>
                         <textarea
                           id="bio"
                           rows={4}
                           value={editedBio}
                           onChange={(e) => setEditedBio(e.target.value)}
-                          className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg resize-none"
+                          className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg resize-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                           placeholder="Tell us about yourself..."
                         />
                       </div>
@@ -243,28 +243,28 @@ export function ProfilePage({ user, onBack, onNavigateToSettings, onLogout, onUs
                   </div>
                 ) : (
                   <>
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                      <h3 className="text-lg font-semibold mb-4">About</h3>
-                      <p className="text-gray-600 leading-relaxed">
-                        Experienced project manager with a passion for leading cross-functional teams 
-                        and delivering high-quality projects. Specializing in agile methodologies and 
+                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                      <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">About</h3>
+                      <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                        Experienced project manager with a passion for leading cross-functional teams
+                        and delivering high-quality projects. Specializing in agile methodologies and
                         user-centered design. Always looking for new challenges and opportunities to grow.
                       </p>
                     </div>
 
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                      <h3 className="text-lg font-semibold mb-4">Recent Achievements</h3>
+                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                      <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Recent Achievements</h3>
                       <div className="space-y-3">
                         {[
                           { title: 'Completed 100 Tasks', date: 'Feb 15, 2026', icon: '🎯' },
                           { title: 'Led 5 Successful Projects', date: 'Feb 10, 2026', icon: '🏆' },
                           { title: 'Team Player Award', date: 'Jan 28, 2026', icon: '⭐' },
                         ].map((achievement, idx) => (
-                          <div key={idx} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
+                          <div key={idx} className="flex items-center gap-4 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                             <span className="text-2xl">{achievement.icon}</span>
                             <div>
-                              <p className="font-medium text-gray-900">{achievement.title}</p>
-                              <p className="text-sm text-gray-500">{achievement.date}</p>
+                              <p className="font-medium text-gray-900 dark:text-white">{achievement.title}</p>
+                              <p className="text-sm text-gray-500 dark:text-gray-400">{achievement.date}</p>
                             </div>
                           </div>
                         ))}
@@ -276,28 +276,28 @@ export function ProfilePage({ user, onBack, onNavigateToSettings, onLogout, onUs
 
               {/* Projects Tab */}
               <TabsContent value="projects">
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <h3 className="text-lg font-semibold mb-4">My Projects</h3>
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                  <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">My Projects</h3>
                   <div className="space-y-4">
                     {projects.map((project, idx) => (
-                      <div key={idx} className="p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow">
+                      <div key={idx} className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:shadow-md transition-shadow bg-white dark:bg-gray-800">
                         <div className="flex items-start justify-between mb-3">
                           <div>
-                            <h4 className="font-semibold text-gray-900">{project.name}</h4>
-                            <p className="text-sm text-gray-600 mt-1">{project.role}</p>
+                            <h4 className="font-semibold text-gray-900 dark:text-white">{project.name}</h4>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{project.role}</p>
                           </div>
                           <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                            project.status === 'Active' 
-                              ? 'bg-green-100 text-green-700' 
-                              : 'bg-blue-100 text-blue-700'
+                            project.status === 'Active'
+                              ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                              : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
                           }`}>
                             {project.status}
                           </span>
                         </div>
                         <div className="space-y-2">
                           <div className="flex items-center justify-between text-sm">
-                            <span className="text-gray-600">Progress</span>
-                            <span className="font-medium">{project.progress}%</span>
+                            <span className="text-gray-600 dark:text-gray-400">Progress</span>
+                            <span className="font-medium text-gray-900 dark:text-white">{project.progress}%</span>
                           </div>
                           <Progress value={project.progress} className="h-2" />
                         </div>
@@ -309,18 +309,18 @@ export function ProfilePage({ user, onBack, onNavigateToSettings, onLogout, onUs
 
               {/* Activity Tab */}
               <TabsContent value="activity">
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                  <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Recent Activity</h3>
                   <div className="space-y-4">
                     {activities.map((activity, idx) => (
-                      <div key={idx} className="flex gap-4 pb-4 border-b border-gray-100 last:border-0">
-                        <div className="w-2 h-2 bg-blue-600 rounded-full mt-2"></div>
+                      <div key={idx} className="flex gap-4 pb-4 border-b border-gray-100 dark:border-gray-700 last:border-0">
+                        <div className="w-2 h-2 bg-blue-600 rounded-full mt-2 flex-shrink-0"></div>
                         <div className="flex-1">
-                          <p className="text-gray-900">{activity.action}</p>
+                          <p className="text-gray-900 dark:text-white">{activity.action}</p>
                           <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xs text-gray-500">{activity.time}</span>
-                            <span className="text-xs text-gray-400">•</span>
-                            <span className="text-xs text-blue-600">{activity.project}</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">{activity.time}</span>
+                            <span className="text-xs text-gray-400 dark:text-gray-600">•</span>
+                            <span className="text-xs text-blue-600 dark:text-blue-400">{activity.project}</span>
                           </div>
                         </div>
                       </div>
@@ -331,14 +331,14 @@ export function ProfilePage({ user, onBack, onNavigateToSettings, onLogout, onUs
 
               {/* Skills Tab */}
               <TabsContent value="skills">
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <h3 className="text-lg font-semibold mb-4">Skills & Expertise</h3>
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                  <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Skills & Expertise</h3>
                   <div className="space-y-4">
                     {skills.map((skill, idx) => (
                       <div key={idx}>
                         <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium text-gray-900">{skill.name}</span>
-                          <span className="text-sm text-gray-600">{skill.level}%</span>
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">{skill.name}</span>
+                          <span className="text-sm text-gray-600 dark:text-gray-400">{skill.level}%</span>
                         </div>
                         <Progress value={skill.level} className="h-2" />
                       </div>
