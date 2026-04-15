@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { Plus, MoreVertical, Calendar, User, ArrowLeft, MessageSquare, Check, Clock, Users } from 'lucide-react';
+import { Plus, MoreVertical, Calendar, User, ArrowLeft, MessageSquare, Check, Clock, Users, Trash2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Checkbox } from './ui/checkbox';
@@ -178,6 +178,14 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
   const [showTaskDetail, setShowTaskDetail] = useState(false);
   const [isConnectionsPopupOpen, setIsConnectionsPopupOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Controlled detail panel state
+  const [detailTitle, setDetailTitle] = useState('');
+  const [detailDescription, setDetailDescription] = useState('');
+  const [detailStatus, setDetailStatus] = useState<Task['status']>('todo');
+  const [detailDueDate, setDetailDueDate] = useState('');
 
   // Load tasks from backend
   useEffect(() => {
@@ -191,7 +199,6 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
         setIsLoading(true);
         const tasks = await taskAPI.getByProject(projectId);
 
-        // Organize tasks by status
         const newColumns = [
           { id: 'todo', title: 'To Do', tasks: tasks.filter((t: any) => t.status === 'todo') },
           { id: 'in-progress', title: 'In Progress', tasks: tasks.filter((t: any) => t.status === 'in-progress') },
@@ -209,13 +216,22 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
     loadTasks();
   }, [projectId]);
 
+  // Sync detail panel fields when a task is selected
+  useEffect(() => {
+    if (selectedTask) {
+      setDetailTitle(selectedTask.title || '');
+      setDetailDescription(selectedTask.description || '');
+      setDetailStatus(selectedTask.status || 'todo');
+      setDetailDueDate(selectedTask.dueDate || '');
+    }
+  }, [selectedTask]);
+
   const handleDrop = async (taskId: string, newStatus: string) => {
     // Optimistically update UI
     setColumns((prevColumns) => {
-      const newColumns = [...prevColumns];
+      const newColumns = prevColumns.map(col => ({ ...col, tasks: [...col.tasks] }));
       let movedTask: Task | null = null;
 
-      // Find and remove task from old column
       newColumns.forEach((column) => {
         const taskIndex = column.tasks.findIndex((task) => task.id === taskId);
         if (taskIndex !== -1) {
@@ -224,7 +240,6 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
         }
       });
 
-      // Add task to new column
       if (movedTask) {
         const targetColumn = newColumns.find((column) => column.id === newStatus);
         if (targetColumn) {
@@ -235,13 +250,17 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
       return newColumns;
     });
 
-    // Update backend
+    // If the detail panel is open for this task, sync its status
+    if (selectedTask?.id === taskId) {
+      setDetailStatus(newStatus as Task['status']);
+      setSelectedTask(prev => prev ? { ...prev, status: newStatus as Task['status'] } : prev);
+    }
+
     try {
       await taskAPI.update(taskId, { status: newStatus });
       toast.success('Task moved successfully');
     } catch (error) {
       handleApiError(error, 'Failed to update task');
-      // Revert on error - reload tasks
       if (projectId) {
         const tasks = await taskAPI.getByProject(projectId);
         const newColumns = [
@@ -309,13 +328,96 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
         )
       );
 
-      // Open the task detail panel for the new task
       setSelectedTask(newTask);
       setShowTaskDetail(true);
-
       toast.success('Task created successfully');
     } catch (error) {
       handleApiError(error, 'Failed to create task');
+    }
+  };
+
+  const handleSaveTask = async () => {
+    if (!selectedTask) return;
+    setIsSaving(true);
+    try {
+      const updates = {
+        title: detailTitle,
+        description: detailDescription,
+        status: detailStatus,
+        due_date: detailDueDate || null,
+      };
+
+      await taskAPI.update(selectedTask.id, updates);
+
+      // Update local columns state
+      setColumns((prevColumns) =>
+        prevColumns.map((column) => ({
+          ...column,
+          tasks: column.tasks
+            .filter((t) => {
+              // If status changed, remove from old column
+              if (t.id === selectedTask.id && column.id !== detailStatus) return false;
+              return true;
+            })
+            .map((t) =>
+              t.id === selectedTask.id
+                ? { ...t, title: detailTitle, description: detailDescription, status: detailStatus, dueDate: detailDueDate }
+                : t
+            ),
+        })).map((column) => {
+          // If status changed, add to new column
+          if (column.id === detailStatus && !column.tasks.find(t => t.id === selectedTask.id)) {
+            return {
+              ...column,
+              tasks: [...column.tasks, {
+                ...selectedTask,
+                title: detailTitle,
+                description: detailDescription,
+                status: detailStatus,
+                dueDate: detailDueDate,
+              }],
+            };
+          }
+          return column;
+        })
+      );
+
+      setSelectedTask(prev => prev ? {
+        ...prev,
+        title: detailTitle,
+        description: detailDescription,
+        status: detailStatus,
+        dueDate: detailDueDate,
+      } : prev);
+
+      toast.success('Task saved successfully');
+    } catch (error) {
+      handleApiError(error, 'Failed to save task');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteTask = async () => {
+    if (!selectedTask) return;
+    setIsDeleting(true);
+    try {
+      await taskAPI.delete(selectedTask.id);
+
+      setColumns((prevColumns) =>
+        prevColumns.map((column) => ({
+          ...column,
+          tasks: column.tasks.filter((t) => t.id !== selectedTask.id),
+        }))
+      );
+
+      setShowTaskDetail(false);
+      setSelectedTask(null);
+      toast.success('Task deleted');
+    } catch (error) {
+      handleApiError(error, 'Failed to delete task');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -376,7 +478,7 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
                 <MessageSquare className="w-4 h-4 mr-2" />
                 Team Chat
               </Button>
-              <button 
+              <button
                 onClick={() => setIsConnectionsPopupOpen(true)}
                 className="relative p-2 rounded-lg bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20 hover:from-purple-100 hover:to-violet-100 dark:hover:from-purple-900/30 dark:hover:to-violet-900/30 transition-all duration-200 group"
               >
@@ -436,9 +538,10 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">
                   Title
                 </label>
-                <Input 
-                  defaultValue={selectedTask.title || ''} 
-                  className="dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
+                <Input
+                  value={detailTitle}
+                  onChange={(e) => setDetailTitle(e.target.value)}
+                  className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 />
               </div>
 
@@ -449,7 +552,8 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
                 <textarea
                   className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg resize-none dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                   rows={4}
-                  defaultValue={selectedTask.description || ''}
+                  value={detailDescription}
+                  onChange={(e) => setDetailDescription(e.target.value)}
                   placeholder="Add description..."
                 />
               </div>
@@ -458,9 +562,10 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">
                   Status
                 </label>
-                <select 
+                <select
                   className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
-                  defaultValue={selectedTask.status || 'todo'}
+                  value={detailStatus}
+                  onChange={(e) => setDetailStatus(e.target.value as Task['status'])}
                 >
                   <option value="todo">To Do</option>
                   <option value="in-progress">In Progress</option>
@@ -472,32 +577,30 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">
                   Due Date
                 </label>
-                <Input 
-                  type="date" 
-                  defaultValue={selectedTask.dueDate || ''} 
-                  className="dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
+                <Input
+                  type="date"
+                  value={detailDueDate}
+                  onChange={(e) => setDetailDueDate(e.target.value)}
+                  className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 />
               </div>
 
-              <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-3">
-                  Checklist
-                </label>
-                <div className="space-y-2">
-                  {['Task item 1', 'Task item 2', 'Task item 3'].map((item, idx) => (
-                    <div key={idx} className="flex items-center gap-2">
-                      <Checkbox id={`check-${idx}`} />
-                      <label htmlFor={`check-${idx}`} className="text-sm text-gray-700 dark:text-gray-300">
-                        {item}
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                <Button className="w-full btn-accent">
-                  Save Changes
+              <div className="pt-4 border-t border-gray-200 dark:border-gray-700 flex flex-col gap-3">
+                <Button
+                  className="w-full btn-accent"
+                  onClick={handleSaveTask}
+                  disabled={isSaving}
+                >
+                  {isSaving ? 'Saving...' : 'Save Changes'}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full text-red-600 border-red-300 hover:bg-red-50 dark:text-red-400 dark:border-red-700 dark:hover:bg-red-900/20"
+                  onClick={handleDeleteTask}
+                  disabled={isDeleting}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  {isDeleting ? 'Deleting...' : 'Delete Task'}
                 </Button>
               </div>
             </div>
@@ -506,10 +609,10 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
       </div>
 
       {/* Connections Popup */}
-      <ConnectionsPopup 
+      <ConnectionsPopup
         user={user}
         isOpen={isConnectionsPopupOpen}
-        onClose={() => setIsConnectionsPopupOpen(false)} 
+        onClose={() => setIsConnectionsPopupOpen(false)}
       />
     </DndProvider>
   );
