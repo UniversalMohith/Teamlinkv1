@@ -13,9 +13,24 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-// In-memory persistence (localStorage blocked in sandboxed iframes)
-let _persistedTheme: Theme = 'auto';
-let _persistedAccent: AccentColor = 'blue';
+function readStorage(key: string, fallback: string): string {
+  try {
+    return localStorage.getItem(key) ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeStorage(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // sandboxed iframe – silently ignore
+  }
+}
+
+const _persistedTheme = readStorage('teamlink-theme', 'auto') as Theme;
+const _persistedAccent = readStorage('teamlink-accent', 'blue') as AccentColor;
 
 function getSystemDark(): boolean {
   return typeof window !== 'undefined'
@@ -29,18 +44,25 @@ function resolveIsDark(theme: Theme): boolean {
   return getSystemDark();
 }
 
-// Compute initial isDark synchronously — reads real system preference
 const _initialIsDark = resolveIsDark(_persistedTheme);
 
 // Apply to DOM immediately before first render to avoid flash
 if (typeof document !== 'undefined') {
+  const root = document.documentElement;
   if (_initialIsDark) {
-    document.documentElement.classList.add('dark');
+    root.classList.add('dark');
   } else {
-    document.documentElement.classList.remove('dark');
+    root.classList.remove('dark');
   }
-  // Set a meta color-scheme so the browser native UI matches
-  document.documentElement.style.colorScheme = _initialIsDark ? 'dark' : 'light';
+  // Set data-theme attribute for CSS overrides
+  if (_persistedTheme === 'light') {
+    root.setAttribute('data-theme', 'light');
+  } else if (_persistedTheme === 'dark') {
+    root.setAttribute('data-theme', 'dark');
+  } else {
+    root.removeAttribute('data-theme');
+  }
+  root.style.colorScheme = _initialIsDark ? 'dark' : 'light';
 }
 
 const accentColors = {
@@ -97,10 +119,26 @@ function applyAccentVars(accentColor: AccentColor) {
   root.style.setProperty('--color-accent-light-dark', colors.lightDark);
 }
 
+function applyDOMTheme(theme: Theme, dark: boolean) {
+  const root = document.documentElement;
+  if (dark) {
+    root.classList.add('dark');
+  } else {
+    root.classList.remove('dark');
+  }
+  if (theme === 'light') {
+    root.setAttribute('data-theme', 'light');
+  } else if (theme === 'dark') {
+    root.setAttribute('data-theme', 'dark');
+  } else {
+    root.removeAttribute('data-theme');
+  }
+  root.style.colorScheme = dark ? 'dark' : 'light';
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, _setTheme] = useState<Theme>(_persistedTheme);
   const [accentColor, _setAccentColor] = useState<AccentColor>(_persistedAccent);
-  // Initialise from the synchronously-resolved value so React matches the DOM on first render
   const [isDark, setIsDark] = useState<boolean>(_initialIsDark);
   const themeRef = useRef(theme);
 
@@ -111,13 +149,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       if (themeRef.current === 'auto') {
         const dark = e.matches;
         setIsDark(dark);
-        if (dark) {
-          document.documentElement.classList.add('dark');
-        } else {
-          document.documentElement.classList.remove('dark');
-        }
-        document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
-        applyAccentVars(_persistedAccent);
+        applyDOMTheme('auto', dark);
       }
     };
     mq.addEventListener('change', handler);
@@ -125,35 +157,22 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setTheme = (newTheme: Theme) => {
-    _persistedTheme = newTheme;
+    writeStorage('teamlink-theme', newTheme);
     themeRef.current = newTheme;
     _setTheme(newTheme);
     const dark = resolveIsDark(newTheme);
     setIsDark(dark);
-    if (dark) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-    document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+    applyDOMTheme(newTheme, dark);
   };
 
   const setAccentColor = (color: AccentColor) => {
-    _persistedAccent = color;
+    writeStorage('teamlink-accent', color);
     _setAccentColor(color);
   };
 
-  // Apply .dark class + accent CSS variables whenever theme / accent / isDark changes
+  // Apply .dark class + data-theme + accent CSS variables whenever theme / accent / isDark changes
   useEffect(() => {
-    const root = document.documentElement;
-
-    if (isDark) {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
-    root.style.colorScheme = isDark ? 'dark' : 'light';
-
+    applyDOMTheme(theme, isDark);
     applyAccentVars(accentColor);
   }, [theme, accentColor, isDark]);
 

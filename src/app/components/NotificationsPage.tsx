@@ -1,21 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, Check, X, Bell, MessageSquare, Users, Calendar, Loader2 } from 'lucide-react';
+import {
+  ArrowLeft, Check, Bell, MessageSquare, Users, Calendar, Loader2,
+  CheckCheck, UserPlus, FolderOpen, ClipboardList,
+} from 'lucide-react';
 import { Button } from './ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { notificationsAPI, handleApiError } from '../../utils/api';
 import { toast } from 'sonner';
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  avatar: string;
-  role: string;
-  joinDate: string;
-}
-
 interface NotificationsPageProps {
-  user: User;
+  user: any;
   onBack: () => void;
   onNavigateToProfile: () => void;
   onLogout: () => void;
@@ -23,12 +17,51 @@ interface NotificationsPageProps {
 
 interface Notification {
   id: string;
-  type: 'task' | 'message' | 'team' | 'event';
+  type: string;
   title: string;
   description: string;
-  time: string;
-  read: boolean;
+  created_at?: string;
+  time?: string;
+  read?: boolean;
+  is_read?: boolean;
   avatar?: string;
+}
+
+function getDateGroup(dateStr: string | undefined): string {
+  if (!dateStr) return 'Earlier';
+  const date = new Date(dateStr);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const notifDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  if (notifDate.getTime() >= today.getTime()) return 'Today';
+  if (notifDate.getTime() >= yesterday.getTime()) return 'Yesterday';
+  return 'Earlier';
+}
+
+function getTypeIcon(type: string) {
+  switch (type) {
+    case 'task': return <ClipboardList className="w-4 h-4" />;
+    case 'message': return <MessageSquare className="w-4 h-4" />;
+    case 'team': return <Users className="w-4 h-4" />;
+    case 'event': return <Calendar className="w-4 h-4" />;
+    case 'friend_request': return <UserPlus className="w-4 h-4" />;
+    case 'project': return <FolderOpen className="w-4 h-4" />;
+    default: return <Bell className="w-4 h-4" />;
+  }
+}
+
+function getTypeColor(type: string) {
+  switch (type) {
+    case 'task': return 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400';
+    case 'message': return 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400';
+    case 'team': return 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400';
+    case 'event': return 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400';
+    case 'friend_request': return 'bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400';
+    case 'project': return 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400';
+    default: return 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400';
+  }
 }
 
 export function NotificationsPage({ user, onBack, onNavigateToProfile, onLogout }: NotificationsPageProps) {
@@ -36,33 +69,35 @@ export function NotificationsPage({ user, onBack, onNavigateToProfile, onLogout 
   const [isLoading, setIsLoading] = useState(true);
   const [isMarkingAll, setIsMarkingAll] = useState(false);
 
+  const userId = user?.id;
+
   const loadNotifications = useCallback(async () => {
     try {
       setIsLoading(true);
-      const data = await notificationsAPI.getAll(user.id);
+      const data = await notificationsAPI.getAll(userId);
       setNotifications(data || []);
     } catch (error) {
       handleApiError(error, 'Failed to load notifications');
     } finally {
       setIsLoading(false);
     }
-  }, [user.id]);
+  }, [userId]);
 
   useEffect(() => {
     loadNotifications();
   }, [loadNotifications]);
 
+  const isRead = (n: Notification) => n.read || n.is_read;
+
   const handleMarkAsRead = async (notificationId: string) => {
-    // Optimistic update
     setNotifications(prev =>
-      prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
+      prev.map(n => n.id === notificationId ? { ...n, read: true, is_read: true } : n)
     );
     try {
       await notificationsAPI.markAsRead(notificationId);
     } catch (error) {
-      // Revert on failure
       setNotifications(prev =>
-        prev.map(n => n.id === notificationId ? { ...n, read: false } : n)
+        prev.map(n => n.id === notificationId ? { ...n, read: false, is_read: false } : n)
       );
       handleApiError(error, 'Failed to mark notification as read');
     }
@@ -71,9 +106,9 @@ export function NotificationsPage({ user, onBack, onNavigateToProfile, onLogout 
   const handleMarkAllAsRead = async () => {
     setIsMarkingAll(true);
     const previous = notifications;
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    setNotifications(prev => prev.map(n => ({ ...n, read: true, is_read: true })));
     try {
-      await notificationsAPI.markAllAsRead(user.id);
+      await notificationsAPI.markAllAsRead(userId);
       toast.success('All notifications marked as read');
     } catch (error) {
       setNotifications(previous);
@@ -83,212 +118,176 @@ export function NotificationsPage({ user, onBack, onNavigateToProfile, onLogout 
     }
   };
 
-  const getIcon = (type: Notification['type']) => {
-    switch (type) {
-      case 'task': return <Check className="w-4 h-4" />;
-      case 'message': return <MessageSquare className="w-4 h-4" />;
-      case 'team': return <Users className="w-4 h-4" />;
-      case 'event': return <Calendar className="w-4 h-4" />;
+  const unreadNotifications = notifications.filter(n => !isRead(n));
+  const unreadCount = unreadNotifications.length;
+
+  // Group notifications by date
+  function groupByDate(notifs: Notification[]): { label: string; items: Notification[] }[] {
+    const groups: Record<string, Notification[]> = {};
+    for (const n of notifs) {
+      const group = getDateGroup(n.created_at);
+      if (!groups[group]) groups[group] = [];
+      groups[group].push(n);
     }
-  };
+    const order = ['Today', 'Yesterday', 'Earlier'];
+    return order.filter(k => groups[k]).map(k => ({ label: k, items: groups[k] }));
+  }
 
-  const getIconColor = (type: Notification['type']) => {
-    switch (type) {
-      case 'task': return 'bg-blue-100 text-blue-600';
-      case 'message': return 'bg-green-100 text-green-600';
-      case 'team': return 'bg-purple-100 text-purple-600';
-      case 'event': return 'bg-orange-100 text-orange-600';
-    }
-  };
+  const NotificationRow = ({ notification }: { notification: Notification }) => {
+    const read = isRead(notification);
+    const timeStr = notification.created_at
+      ? new Date(notification.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+      : notification.time || '';
 
-  const unreadNotifications = notifications.filter(n => !n.read);
-  const readNotifications = notifications.filter(n => n.read);
-
-  const NotificationRow = ({ notification, showDot = false }: { notification: Notification; showDot?: boolean }) => (
-    <div
-      key={notification.id}
-      className="p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer transition-colors relative"
-      onClick={() => !notification.read && handleMarkAsRead(notification.id)}
-    >
-      <div className="flex gap-4">
-        {notification.avatar ? (
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0 ${notification.read ? 'bg-gradient-to-br from-gray-300 to-gray-400' : 'bg-gradient-to-br from-blue-400 to-blue-600'}`}>
-            {notification.avatar}
-          </div>
-        ) : (
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${getIconColor(notification.type)}`}>
-            {getIcon(notification.type)}
-          </div>
-        )}
+    return (
+      <div
+        className={`flex gap-4 p-4 cursor-pointer transition-colors rounded-xl ${
+          read
+            ? 'hover:bg-gray-50 dark:hover:bg-gray-700/30'
+            : 'bg-blue-50/50 dark:bg-blue-900/10 hover:bg-blue-50 dark:hover:bg-blue-900/20'
+        }`}
+        onClick={() => !read && handleMarkAsRead(notification.id)}
+      >
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${getTypeColor(notification.type)}`}>
+          {getTypeIcon(notification.type)}
+        </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between mb-1">
-            <p className={`font-medium ${notification.read ? 'text-gray-700 dark:text-gray-400' : 'text-gray-900 dark:text-white'}`}>
+          <div className="flex items-start justify-between gap-2 mb-0.5">
+            <p className={`text-sm ${read ? 'text-gray-600 dark:text-gray-400' : 'font-medium text-gray-900 dark:text-white'}`}>
               {notification.title}
             </p>
-            {!notification.read && (
-              <button
-                className="text-gray-400 hover:text-gray-600 ml-2 flex-shrink-0"
-                onClick={e => { e.stopPropagation(); handleMarkAsRead(notification.id); }}
-                aria-label="Mark as read"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {!read && (
+                <div className="w-2 h-2 bg-[rgb(var(--color-accent-primary))] dark:bg-[rgb(var(--color-accent-primary-dark))] rounded-full" />
+              )}
+              {!read && (
+                <button
+                  className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
+                  onClick={e => { e.stopPropagation(); handleMarkAsRead(notification.id); }}
+                  title="Mark as read"
+                >
+                  <Check className="w-3.5 h-3.5 text-gray-400" />
+                </button>
+              )}
+            </div>
           </div>
-          <p className={`text-sm mb-1 ${notification.read ? 'text-gray-500 dark:text-gray-500' : 'text-gray-600 dark:text-gray-300'}`}>
-            {notification.description}
-          </p>
-          <p className="text-xs text-gray-400">{notification.time}</p>
+          {notification.description && (
+            <p className={`text-xs mb-1 ${read ? 'text-gray-400 dark:text-gray-500' : 'text-gray-500 dark:text-gray-400'}`}>
+              {notification.description}
+            </p>
+          )}
+          <p className="text-[11px] text-gray-400 dark:text-gray-500">{timeStr}</p>
         </div>
-        {showDot && !notification.read && (
-          <div className="absolute top-4 right-4 w-2 h-2 bg-blue-600 rounded-full" />
-        )}
       </div>
+    );
+  };
+
+  const EmptyState = ({ message }: { message: string }) => (
+    <div className="py-16 text-center">
+      <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+        <Bell className="w-7 h-7 text-gray-400 dark:text-gray-500" />
+      </div>
+      <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">{message}</p>
+      <p className="text-xs text-gray-500 dark:text-gray-400">
+        Notifications will appear here when there's something new.
+      </p>
     </div>
   );
 
-  const EmptyState = ({ message }: { message: string }) => (
-    <div className="p-12 text-center">
-      <Bell className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-      <p className="text-gray-500">{message}</p>
-    </div>
-  );
+  const GroupedList = ({ items }: { items: Notification[] }) => {
+    const groups = groupByDate(items);
+    if (items.length === 0) return <EmptyState message="No notifications" />;
+    return (
+      <div className="space-y-4">
+        {groups.map(group => (
+          <div key={group.label}>
+            <h3 className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400 px-4 mb-2">
+              {group.label}
+            </h3>
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <div className="divide-y divide-gray-100 dark:divide-gray-700/50">
+                {group.items.map(n => <NotificationRow key={n.id} notification={n} />)}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+      <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={onBack}>
+            <Button variant="ghost" size="icon" onClick={onBack} className="rounded-lg">
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div>
-              <h1 className="text-xl font-semibold dark:text-white">Notifications</h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {isLoading ? 'Loading...' : `${unreadNotifications.length} unread`}
+              <h1 className="text-lg font-semibold text-gray-900 dark:text-white">Notifications</h1>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {isLoading ? 'Loading...' : `${unreadCount} unread`}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleMarkAllAsRead}
-              disabled={isMarkingAll || unreadNotifications.length === 0}
-            >
-              {isMarkingAll ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null}
-              Mark all as read
-            </Button>
-            <Button variant="outline" onClick={onNavigateToProfile}>
-              Profile
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleMarkAllAsRead}
+            disabled={isMarkingAll || unreadCount === 0}
+            className="rounded-lg"
+          >
+            {isMarkingAll ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <CheckCheck className="w-4 h-4 mr-1.5" />}
+            Mark all read
+          </Button>
         </div>
       </header>
 
-      <div className="max-w-5xl mx-auto px-6 py-8">
+      <div className="max-w-4xl mx-auto px-6 py-6">
         {isLoading ? (
           <div className="flex items-center justify-center py-24">
             <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
           </div>
         ) : (
-          <Tabs defaultValue="all" className="space-y-6">
-            <TabsList className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-              <TabsTrigger value="all">
+          <Tabs defaultValue="all" className="space-y-5">
+            <TabsList className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+              <TabsTrigger value="all" className="rounded-lg">
                 All
-                <span className="ml-2 px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full text-xs">
+                <span className="ml-1.5 px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full text-xs">
                   {notifications.length}
                 </span>
               </TabsTrigger>
-              <TabsTrigger value="unread">
+              <TabsTrigger value="unread" className="rounded-lg">
                 Unread
-                <span className="ml-2 px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full text-xs">
-                  {unreadNotifications.length}
-                </span>
+                {unreadCount > 0 && (
+                  <span className="ml-1.5 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full text-xs">
+                    {unreadCount}
+                  </span>
+                )}
               </TabsTrigger>
-              <TabsTrigger value="tasks">Tasks</TabsTrigger>
-              <TabsTrigger value="messages">Messages</TabsTrigger>
-              <TabsTrigger value="teams">Teams</TabsTrigger>
+              <TabsTrigger value="tasks" className="rounded-lg">Tasks</TabsTrigger>
+              <TabsTrigger value="messages" className="rounded-lg">Messages</TabsTrigger>
             </TabsList>
 
-            {/* All */}
             <TabsContent value="all">
-              <div className="space-y-4">
-                {unreadNotifications.length > 0 && (
-                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-                    <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                      <h3 className="font-semibold text-gray-900 dark:text-white">New</h3>
-                    </div>
-                    <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                      {unreadNotifications.map(n => <NotificationRow key={n.id} notification={n} showDot />)}
-                    </div>
-                  </div>
-                )}
-                {readNotifications.length > 0 && (
-                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-                    <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                      <h3 className="font-semibold text-gray-900 dark:text-white">Earlier</h3>
-                    </div>
-                    <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                      {readNotifications.map(n => <NotificationRow key={n.id} notification={n} />)}
-                    </div>
-                  </div>
-                )}
-                {notifications.length === 0 && <EmptyState message="No notifications yet" />}
-              </div>
+              <GroupedList items={notifications} />
             </TabsContent>
 
-            {/* Unread */}
             <TabsContent value="unread">
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-                {unreadNotifications.length > 0 ? (
-                  <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                    {unreadNotifications.map(n => <NotificationRow key={n.id} notification={n} showDot />)}
-                  </div>
-                ) : (
-                  <EmptyState message="No unread notifications" />
-                )}
-              </div>
+              {unreadNotifications.length > 0 ? (
+                <GroupedList items={unreadNotifications} />
+              ) : (
+                <EmptyState message="All caught up!" />
+              )}
             </TabsContent>
 
-            {/* Tasks */}
             <TabsContent value="tasks">
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-                {notifications.filter(n => n.type === 'task').length > 0 ? (
-                  <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                    {notifications.filter(n => n.type === 'task').map(n => <NotificationRow key={n.id} notification={n} />)}
-                  </div>
-                ) : (
-                  <EmptyState message="No task notifications" />
-                )}
-              </div>
+              <GroupedList items={notifications.filter(n => n.type === 'task')} />
             </TabsContent>
 
-            {/* Messages */}
             <TabsContent value="messages">
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-                {notifications.filter(n => n.type === 'message').length > 0 ? (
-                  <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                    {notifications.filter(n => n.type === 'message').map(n => <NotificationRow key={n.id} notification={n} />)}
-                  </div>
-                ) : (
-                  <EmptyState message="No message notifications" />
-                )}
-              </div>
-            </TabsContent>
-
-            {/* Teams */}
-            <TabsContent value="teams">
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-                {notifications.filter(n => n.type === 'team').length > 0 ? (
-                  <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                    {notifications.filter(n => n.type === 'team').map(n => <NotificationRow key={n.id} notification={n} />)}
-                  </div>
-                ) : (
-                  <EmptyState message="No team notifications" />
-                )}
-              </div>
+              <GroupedList items={notifications.filter(n => n.type === 'message')} />
             </TabsContent>
           </Tabs>
         )}

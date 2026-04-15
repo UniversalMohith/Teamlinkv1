@@ -3,15 +3,6 @@ import { Send, X, Minimize2, Maximize2, Phone, Video, MessageCircle, Search, Mor
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  avatar: string;
-  role: string;
-  joinDate: string;
-}
-
 interface Message {
   id: string;
   sender: string;
@@ -22,7 +13,7 @@ interface Message {
 }
 
 interface ChatPopupProps {
-  user: User;
+  user: any;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -35,9 +26,12 @@ interface TeamMember {
 }
 
 export function ChatPopup({ user, isOpen, onClose }: ChatPopupProps) {
+  const userName = user.name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'User';
+  const userAvatar = user.avatar || user.avatar_initials || 'U';
+
   const [messages, setMessages] = useState<Message[]>([
     { id: '1', sender: 'John Smith', content: "Hey team, how's the project going?", time: '2:30 PM', avatar: 'JS', isCurrentUser: false },
-    { id: '2', sender: user.name, content: 'Going great! Just finished the homepage design.', time: '2:32 PM', avatar: user.avatar, isCurrentUser: true },
+    { id: '2', sender: userName, content: 'Going great! Just finished the homepage design.', time: '2:32 PM', avatar: userAvatar, isCurrentUser: true },
     { id: '3', sender: 'Sarah Chen', content: 'Nice! Can you share the mockups?', time: '2:35 PM', avatar: 'SC', isCurrentUser: false },
   ]);
 
@@ -121,10 +115,10 @@ export function ChatPopup({ user, isOpen, onClose }: ChatPopupProps) {
     if (newMessage.trim()) {
       const message: Message = {
         id: `msg-${Date.now()}`,
-        sender: user.name,
+        sender: userName,
         content: newMessage,
         time: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
-        avatar: user.avatar,
+        avatar: userAvatar,
         isCurrentUser: true,
       };
       setMessages([...messages, message]);

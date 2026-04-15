@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { Plus, MoreVertical, Calendar, User, ArrowLeft, MessageSquare, Users, Trash2, Layout } from 'lucide-react';
+import {
+  Plus, MoreVertical, Calendar, User, ArrowLeft, MessageSquare,
+  Users, Trash2, Layout, Sun, Moon, Monitor,
+} from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { ConnectionsPopup } from './ConnectionsPopup';
+import { useTheme } from './ThemeContext';
 import { taskAPI, handleApiError } from '../../utils/api';
 import { toast } from 'sonner';
 
@@ -62,31 +66,31 @@ function DraggableTask({ task, onTaskClick }: DraggableTaskProps) {
     <div
       ref={drag}
       onClick={() => onTaskClick(task)}
-      className={`bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer hover:shadow-md transition-shadow ${
-        isDragging ? 'opacity-50' : ''
+      className={`bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 cursor-pointer hover:shadow-md transition-all duration-200 group ${
+        isDragging ? 'opacity-50 rotate-2 scale-105' : ''
       }`}
     >
-      <h4 className="font-medium text-gray-900 dark:text-white mb-2">{task.title}</h4>
+      <h4 className="font-medium text-gray-900 dark:text-white mb-1.5 text-sm">{task.title}</h4>
       {task.description && (
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">{task.description}</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 line-clamp-2">{task.description}</p>
       )}
       <div className="flex items-center justify-between text-xs">
         {task.dueDate && (
-          <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
+          <div className="flex items-center gap-1 text-gray-400 dark:text-gray-500">
             <Calendar className="w-3 h-3" />
             <span>{task.dueDate}</span>
           </div>
         )}
         {task.assignee && (
-          <div className="w-6 h-6 bg-accent-gradient rounded-full flex items-center justify-center text-white text-xs">
+          <div className="w-6 h-6 bg-accent-gradient rounded-full flex items-center justify-center text-white text-[10px] font-medium">
             {task.assignee}
           </div>
         )}
       </div>
       {task.labels && task.labels.length > 0 && (
-        <div className="flex gap-1 mt-2">
+        <div className="flex gap-1 mt-2 flex-wrap">
           {task.labels.map((label, idx) => (
-            <span key={idx} className="px-2 py-1 bg-accent-light dark:bg-accent-light text-accent dark:text-accent text-xs rounded">
+            <span key={idx} className="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-[10px] font-medium rounded-full">
               {label}
             </span>
           ))}
@@ -112,32 +116,39 @@ function DroppableColumn({ column, onDrop, onTaskClick, onAddTask }: DroppableCo
     collect: (monitor) => ({ isOver: !!monitor.isOver() }),
   }));
 
-  const statusColors = {
-    'todo': 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
-    'in-progress': 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-    'done': 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+  const statusColors: Record<string, string> = {
+    'todo': 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
+    'in-progress': 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
+    'done': 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400',
+  };
+
+  const dotColors: Record<string, string> = {
+    'todo': 'bg-gray-400',
+    'in-progress': 'bg-blue-500',
+    'done': 'bg-green-500',
   };
 
   return (
     <div
       ref={drop}
-      className={`flex-shrink-0 w-80 bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 ${
-        isOver ? 'ring-2 ring-[rgb(var(--color-accent-primary))] dark:ring-[rgb(var(--color-accent-primary-dark))]' : ''
+      className={`flex-shrink-0 w-80 bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 transition-all duration-200 ${
+        isOver ? 'ring-2 ring-[rgb(var(--color-accent-primary))] dark:ring-[rgb(var(--color-accent-primary-dark))] bg-blue-50/50 dark:bg-blue-900/10' : ''
       }`}
     >
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <h3 className="font-semibold text-gray-900 dark:text-white">{column.title}</h3>
-          <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[column.id as keyof typeof statusColors] || 'bg-gray-100 dark:bg-gray-700'}`}>
+          <div className={`w-2 h-2 rounded-full ${dotColors[column.id] || 'bg-gray-400'}`} />
+          <h3 className="font-semibold text-gray-900 dark:text-white text-sm">{column.title}</h3>
+          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[column.id] || 'bg-gray-100 dark:bg-gray-700'}`}>
             {column.tasks.length}
           </span>
         </div>
-        <button className="hover:bg-gray-200 dark:hover:bg-gray-700 rounded p-1">
-          <MoreVertical className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+        <button className="hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg p-1 transition-colors">
+          <MoreVertical className="w-4 h-4 text-gray-400" />
         </button>
       </div>
 
-      <div className="space-y-3 mb-3">
+      <div className="space-y-2.5 mb-3 min-h-[40px]">
         {column.tasks.map((task) => (
           <DraggableTask key={task.id} task={task} onTaskClick={onTaskClick} />
         ))}
@@ -145,7 +156,7 @@ function DroppableColumn({ column, onDrop, onTaskClick, onAddTask }: DroppableCo
 
       <button
         onClick={() => onAddTask(column.id)}
-        className="w-full p-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-[rgb(var(--color-accent-primary))] dark:hover:border-[rgb(var(--color-accent-primary-dark))] hover:bg-accent-light dark:hover:bg-accent-light-dark transition-colors flex items-center justify-center gap-2 text-gray-600 dark:text-gray-400 hover:text-accent dark:hover:text-accent"
+        className="w-full p-2.5 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl hover:border-[rgb(var(--color-accent-primary))] dark:hover:border-[rgb(var(--color-accent-primary-dark))] hover:bg-white dark:hover:bg-gray-800 transition-all duration-200 flex items-center justify-center gap-2 text-gray-500 dark:text-gray-400 hover:text-[rgb(var(--color-accent-primary))] dark:hover:text-[rgb(var(--color-accent-primary-dark))] text-sm"
       >
         <Plus className="w-4 h-4" />
         Add Task
@@ -158,12 +169,13 @@ function ColumnSkeleton() {
   return (
     <div className="flex-shrink-0 w-80 bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 animate-pulse">
       <div className="flex items-center gap-2 mb-4">
+        <div className="h-2 w-2 bg-gray-200 dark:bg-gray-700 rounded-full" />
         <div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded" />
         <div className="h-5 w-6 bg-gray-200 dark:bg-gray-700 rounded-full" />
       </div>
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+          <div key={i} className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
             <div className="h-4 w-3/4 bg-gray-200 dark:bg-gray-700 rounded mb-2" />
             <div className="h-3 w-full bg-gray-100 dark:bg-gray-700/50 rounded mb-1" />
             <div className="h-3 w-2/3 bg-gray-100 dark:bg-gray-700/50 rounded" />
@@ -175,6 +187,7 @@ function ColumnSkeleton() {
 }
 
 export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToProfile, onNavigateToSettings, onNavigateToNotifications, onLogout }: KanbanBoardProps) {
+  const { theme, setTheme } = useTheme();
   const [columns, setColumns] = useState<Column[]>([
     { id: 'todo', title: 'To Do', tasks: [] },
     { id: 'in-progress', title: 'In Progress', tasks: [] },
@@ -250,7 +263,7 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
 
     try {
       await taskAPI.update(taskId, { status: newStatus });
-      toast.success('Task moved successfully');
+      toast.success('Task moved');
     } catch (error) {
       handleApiError(error, 'Failed to update task');
       if (projectId) {
@@ -283,7 +296,7 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
           column.id === columnId ? { ...column, tasks: [...column.tasks, newTask] } : column
         )
       );
-      toast.success('Task created successfully');
+      toast.success('Task created');
     } catch (error) {
       handleApiError(error, 'Failed to create task');
     }
@@ -305,7 +318,7 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
       );
       setSelectedTask(newTask);
       setShowTaskDetail(true);
-      toast.success('Task created successfully');
+      toast.success('Task created');
     } catch (error) {
       handleApiError(error, 'Failed to create task');
     }
@@ -344,7 +357,7 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
           })
       );
       setSelectedTask(prev => prev ? { ...prev, title: detailTitle, description: detailDescription, status: detailStatus, dueDate: detailDueDate } : prev);
-      toast.success('Task saved successfully');
+      toast.success('Task saved');
     } catch (error) {
       handleApiError(error, 'Failed to save task');
     } finally {
@@ -370,76 +383,53 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
     }
   };
 
+  const cycleTheme = () => {
+    if (theme === 'light') setTheme('dark');
+    else if (theme === 'dark') setTheme('auto');
+    else setTheme('light');
+  };
+  const ThemeIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : Monitor;
+
+  const totalTasks = columns.reduce((acc, col) => acc + col.tasks.length, 0);
+
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
-        {/* Sidebar */}
-        <div className="w-64 bg-accent-gradient text-white flex flex-col">
-          <div className="p-4 flex items-center gap-2">
-            <div className="w-8 h-8 bg-white rounded flex items-center justify-center">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path d="M3 3L21 12L3 21V3Z" fill="rgb(var(--color-accent-primary))" />
-              </svg>
-            </div>
-            <span className="font-semibold text-lg">TeamLink</span>
-          </div>
-          <div className="px-4 py-6">
-            <h2 className="text-sm font-semibold mb-4">Kanban Board</h2>
-            <div className="space-y-2">
-              <div className="p-3 bg-white/20 rounded-lg backdrop-blur-sm">
-                <h3 className="font-medium">Website Redesign</h3>
-                <p className="text-xs opacity-80 mt-1">Due in 2 days</p>
-              </div>
-            </div>
-          </div>
-          <div className="mt-auto p-4 border-t border-white/20">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/30 rounded-full flex items-center justify-center backdrop-blur-sm">
-                <User className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-sm font-medium">Team Member</p>
-                <p className="text-xs opacity-70">Online</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Main Content */}
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col min-w-0">
           {/* Header */}
-          <header className="h-16 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-6 bg-white dark:bg-gray-800">
+          <header className="h-16 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-6 bg-white dark:bg-gray-900 flex-shrink-0">
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={onBack}>
+              <Button variant="ghost" size="icon" onClick={onBack} className="rounded-lg">
                 <ArrowLeft className="w-5 h-5" />
               </Button>
-              <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Kanban Board</h1>
+              <div>
+                <h1 className="text-lg font-semibold text-gray-900 dark:text-white">Kanban Board</h1>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{totalTasks} tasks</p>
+              </div>
             </div>
-            <div className="flex items-center gap-3">
-              <Button variant="outline" size="sm" onClick={() => onOpenChat('team-1')}>
-                <MessageSquare className="w-4 h-4 mr-2" />
-                Team Chat
+            <div className="flex items-center gap-2">
+              <button
+                onClick={cycleTheme}
+                className="p-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 group"
+                title={`Theme: ${theme}`}
+              >
+                <ThemeIcon className="w-5 h-5 text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-200 transition-colors" />
+              </button>
+              <Button variant="outline" size="sm" onClick={() => onOpenChat('team-1')} className="rounded-lg">
+                <MessageSquare className="w-4 h-4 mr-1.5" />
+                Chat
               </Button>
               <button
                 onClick={() => setIsConnectionsPopupOpen(true)}
-                className="relative p-2 rounded-lg bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20 hover:from-purple-100 hover:to-violet-100 dark:hover:from-purple-900/30 dark:hover:to-violet-900/30 transition-all duration-200 group"
+                className="relative p-2 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-all duration-200 group"
               >
-                <Users className="w-4 h-4 text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform" />
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-br from-green-400 to-green-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-lg">
-                  5
-                </span>
+                <Users className="w-4 h-4 text-gray-500 dark:text-gray-400 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors" />
               </button>
-              <Button size="sm" className="btn-accent" onClick={handleNewCardClick} disabled={!projectId}>
-                <Plus className="w-4 h-4 mr-2" />
+              <Button size="sm" className="btn-accent rounded-lg" onClick={handleNewCardClick} disabled={!projectId}>
+                <Plus className="w-4 h-4 mr-1.5" />
                 New Card
               </Button>
-              <div className="flex -space-x-2 mr-3">
-                {['JL', 'SC', 'AR', 'MK'].map((initial, i) => (
-                  <div key={i} className="w-8 h-8 rounded-full border-2 border-white dark:border-gray-800 bg-accent-gradient flex items-center justify-center text-white text-xs font-medium">
-                    {initial}
-                  </div>
-                ))}
-              </div>
             </div>
           </header>
 
@@ -460,7 +450,7 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
                 <p className="text-sm text-gray-500 dark:text-gray-400 max-w-xs mb-6">
                   Go back to the dashboard and open a project to view its Kanban board.
                 </p>
-                <Button variant="outline" onClick={onBack}>
+                <Button variant="outline" onClick={onBack} className="rounded-lg">
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Back to Dashboard
                 </Button>
@@ -483,22 +473,22 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
 
         {/* Task Detail Sidebar */}
         {showTaskDetail && selectedTask && (
-          <div className="w-96 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 p-6 overflow-y-auto">
+          <div className="w-96 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 p-6 overflow-y-auto flex-shrink-0">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Task Details</h2>
-              <button onClick={() => setShowTaskDetail(false)} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Task Details</h2>
+              <button onClick={() => setShowTaskDetail(false)} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors text-gray-500 dark:text-gray-400">
                 ✕
               </button>
             </div>
-            <div className="space-y-6">
+            <div className="space-y-5">
               <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">Title</label>
-                <Input value={detailTitle} onChange={(e) => setDetailTitle(e.target.value)} className="dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1.5">Title</label>
+                <Input value={detailTitle} onChange={(e) => setDetailTitle(e.target.value)} className="dark:bg-gray-700 dark:border-gray-600 dark:text-white rounded-lg" />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">Description</label>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1.5">Description</label>
                 <textarea
-                  className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg resize-none dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                  className="w-full p-3 border border-gray-200 dark:border-gray-600 rounded-lg resize-none dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 text-sm"
                   rows={4}
                   value={detailDescription}
                   onChange={(e) => setDetailDescription(e.target.value)}
@@ -506,9 +496,9 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">Status</label>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1.5">Status</label>
                 <select
-                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+                  className="w-full p-2.5 border border-gray-200 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white text-sm"
                   value={detailStatus}
                   onChange={(e) => setDetailStatus(e.target.value as Task['status'])}
                 >
@@ -518,16 +508,16 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
                 </select>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">Due Date</label>
-                <Input type="date" value={detailDueDate} onChange={(e) => setDetailDueDate(e.target.value)} className="dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1.5">Due Date</label>
+                <Input type="date" value={detailDueDate} onChange={(e) => setDetailDueDate(e.target.value)} className="dark:bg-gray-700 dark:border-gray-600 dark:text-white rounded-lg" />
               </div>
-              <div className="pt-4 border-t border-gray-200 dark:border-gray-700 flex flex-col gap-3">
-                <Button className="w-full btn-accent" onClick={handleSaveTask} disabled={isSaving}>
+              <div className="pt-4 border-t border-gray-200 dark:border-gray-700 flex flex-col gap-2.5">
+                <Button className="w-full btn-accent rounded-lg" onClick={handleSaveTask} disabled={isSaving}>
                   {isSaving ? 'Saving...' : 'Save Changes'}
                 </Button>
                 <Button
                   variant="outline"
-                  className="w-full text-red-600 border-red-300 hover:bg-red-50 dark:text-red-400 dark:border-red-700 dark:hover:bg-red-900/20"
+                  className="w-full text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-900/20 rounded-lg"
                   onClick={handleDeleteTask}
                   disabled={isDeleting}
                 >
