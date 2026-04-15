@@ -349,6 +349,7 @@ app.put("/make-server-aece0672/user/:userId", async (c) => {
 });
 
 // Update user status (online/offline)
+// FIX BUG-06: Added ownership check — only the authenticated user can update their own status
 app.post("/make-server-aece0672/user/:userId/status", async (c) => {
   try {
     const accessToken = c.req.header('Authorization')?.split(' ')[1];
@@ -359,6 +360,12 @@ app.post("/make-server-aece0672/user/:userId/status", async (c) => {
     }
 
     const userId = c.req.param('userId');
+
+    // Ensure the authenticated user can only update their own status
+    if (user.id !== userId) {
+      return c.json({ error: 'Forbidden' }, 403);
+    }
+
     const { status } = await c.req.json();
 
     const userProfile = await kv.get(`user:${userId}`);
@@ -502,6 +509,7 @@ app.get("/make-server-aece0672/projects", async (c) => {
 });
 
 // Create new project
+// FIX BUG-05: Use crypto.randomUUID() instead of timestamp-based IDs to prevent collision
 app.post("/make-server-aece0672/projects", async (c) => {
   try {
     const accessToken = c.req.header('Authorization')?.split(' ')[1];
@@ -517,7 +525,7 @@ app.post("/make-server-aece0672/projects", async (c) => {
       return c.json({ error: 'Title is required' }, 400);
     }
 
-    const projectId = `${Date.now()}-${user.id}`;
+    const projectId = crypto.randomUUID();
     const project = {
       id: projectId,
       title,
@@ -661,6 +669,7 @@ app.get("/make-server-aece0672/projects/:projectId/tasks", async (c) => {
 });
 
 // Create new task
+// FIX BUG-05: Use crypto.randomUUID() instead of timestamp-based IDs
 app.post("/make-server-aece0672/projects/:projectId/tasks", async (c) => {
   try {
     const accessToken = c.req.header('Authorization')?.split(' ')[1];
@@ -677,7 +686,7 @@ app.post("/make-server-aece0672/projects/:projectId/tasks", async (c) => {
       return c.json({ error: 'Title is required' }, 400);
     }
 
-    const taskId = `${Date.now()}-${user.id}`;
+    const taskId = crypto.randomUUID();
     const task = {
       id: taskId,
       title,
@@ -797,6 +806,7 @@ app.get("/make-server-aece0672/chat/:chatId/messages", async (c) => {
 });
 
 // Send message
+// FIX BUG-05: Use crypto.randomUUID() for message IDs
 app.post("/make-server-aece0672/chat/:chatId/messages", async (c) => {
   try {
     const accessToken = c.req.header('Authorization')?.split(' ')[1];
@@ -814,7 +824,7 @@ app.post("/make-server-aece0672/chat/:chatId/messages", async (c) => {
     }
 
     const userProfile = await kv.get(`user:${user.id}`);
-    const messageId = `${Date.now()}-${user.id}`;
+    const messageId = crypto.randomUUID();
     const message = {
       id: messageId,
       sender: userProfile?.name || 'Unknown',
@@ -934,7 +944,7 @@ app.post("/make-server-aece0672/upload", async (c) => {
     }
 
     const fileExt = file.name.split('.').pop();
-    const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+    const fileName = `${user.id}/${crypto.randomUUID()}.${fileExt}`;
     const bucketName = 'make-aece0672-files';
 
     // Upload to Supabase Storage
@@ -1064,6 +1074,7 @@ app.get("/make-server-aece0672/notifications/:userId", async (c) => {
 });
 
 // Create notification
+// FIX BUG-05: Use crypto.randomUUID() for notification IDs
 app.post("/make-server-aece0672/notifications", async (c) => {
   try {
     const accessToken = c.req.header('Authorization')?.split(' ')[1];
@@ -1075,7 +1086,7 @@ app.post("/make-server-aece0672/notifications", async (c) => {
 
     const { userId, type, title, description } = await c.req.json();
 
-    const notificationId = `${Date.now()}-${userId}`;
+    const notificationId = crypto.randomUUID();
     const notification = {
       id: notificationId,
       userId,
@@ -1221,6 +1232,7 @@ app.get("/make-server-aece0672/dashboard/stats", async (c) => {
 // ==================== SEARCH ROUTES ====================
 
 // Global search
+// FIX BUG-02: getByPrefix now returns {key, value}[] — filter and map accordingly
 app.get("/make-server-aece0672/search", async (c) => {
   try {
     const accessToken = c.req.header('Authorization')?.split(' ')[1];
@@ -1236,15 +1248,18 @@ app.get("/make-server-aece0672/search", async (c) => {
       return c.json({ users: [], teams: [], projects: [] });
     }
 
-    // Search users
+    // Search users — each item is { key, value } from the fixed getByPrefix
     const allUsers = await kv.getByPrefix('user:');
     const users = allUsers
-      .filter((item: any) => {
+      .filter((item: { key: string; value: any }) => {
+        // Skip index keys like user:uuid:projects, user:uuid:notifications, etc.
+        const keyParts = item.key.split(':');
+        if (keyParts.length !== 2) return false;
         const userData = item.value;
-        return userData.name?.toLowerCase().includes(query) ||
-               userData.email?.toLowerCase().includes(query);
+        return userData?.name?.toLowerCase().includes(query) ||
+               userData?.email?.toLowerCase().includes(query);
       })
-      .map((item: any) => item.value)
+      .map((item: { key: string; value: any }) => item.value)
       .slice(0, 5);
 
     // Search projects
