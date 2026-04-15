@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 
 type Theme = 'light' | 'dark' | 'auto';
 type AccentColor = 'blue' | 'purple' | 'green' | 'orange' | 'pink';
@@ -13,86 +13,115 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>('light');
-  const [accentColor, setAccentColor] = useState<AccentColor>('blue');
-  const [isDark, setIsDark] = useState(false);
+// In-memory persistence (localStorage blocked in sandboxed iframes)
+let _persistedTheme: Theme = 'auto';
+let _persistedAccent: AccentColor = 'blue';
 
+function getSystemDark(): boolean {
+  return window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+
+function resolveIsDark(theme: Theme): boolean {
+  if (theme === 'dark') return true;
+  if (theme === 'light') return false;
+  return getSystemDark();
+}
+
+export function ThemeProvider({ children }: { children: ReactNode }) {
+  const [theme, _setTheme] = useState<Theme>(_persistedTheme);
+  const [accentColor, _setAccentColor] = useState<AccentColor>(_persistedAccent);
+  const [isDark, setIsDark] = useState(() => resolveIsDark(_persistedTheme));
+  const themeRef = useRef(theme);
+
+  // Listen for system preference changes when in 'auto' mode
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const handler = (e: MediaQueryListEvent) => {
+      if (themeRef.current === 'auto') {
+        const dark = e.matches;
+        setIsDark(dark);
+        const root = document.documentElement;
+        if (dark) {
+          root.classList.add('dark');
+        } else {
+          root.classList.remove('dark');
+        }
+      }
+    };
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  const setTheme = (newTheme: Theme) => {
+    _persistedTheme = newTheme;
+    themeRef.current = newTheme;
+    _setTheme(newTheme);
+    const dark = resolveIsDark(newTheme);
+    setIsDark(dark);
+    const root = document.documentElement;
+    if (dark) {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+  };
+
+  const setAccentColor = (color: AccentColor) => {
+    _persistedAccent = color;
+    _setAccentColor(color);
+  };
+
+  // Apply accent color CSS variables whenever theme or accent changes
   useEffect(() => {
     const root = document.documentElement;
-    
-    // Apply theme
-    if (theme === 'dark') {
+
+    // Sync dark class on mount and theme change
+    if (isDark) {
       root.classList.add('dark');
-      setIsDark(true);
-    } else if (theme === 'light') {
-      root.classList.remove('dark');
-      setIsDark(false);
     } else {
-      // Auto mode
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (prefersDark) {
-        root.classList.add('dark');
-        setIsDark(true);
-      } else {
-        root.classList.remove('dark');
-        setIsDark(false);
-      }
+      root.classList.remove('dark');
     }
 
-    // Apply accent color CSS variables
-    // Light mode uses professional, standard colors
-    // Dark mode uses completely different colors optimized for dark backgrounds
     const accentColors = {
       blue: {
-        // Light mode - professional blue
-        primary: '37 99 235', // blue-600
-        primaryHover: '29 78 216', // blue-700
-        light: '219 234 254', // blue-100
-        // Dark mode - bright cyan (completely different!)
-        primaryDark: '34 211 238', // cyan-400 - electric cyan
-        primaryDarkHover: '103 232 249', // cyan-300
-        lightDark: '22 78 99', // cyan-900
+        primary: '37 99 235',
+        primaryHover: '29 78 216',
+        light: '219 234 254',
+        primaryDark: '34 211 238',
+        primaryDarkHover: '103 232 249',
+        lightDark: '22 78 99',
       },
       purple: {
-        // Light mode - standard purple
-        primary: '147 51 234', // purple-600
-        primaryHover: '126 34 206', // purple-700
-        light: '243 232 255', // purple-100
-        // Dark mode - vibrant magenta
-        primaryDark: '232 121 249', // fuchsia-400 - bright magenta
-        primaryDarkHover: '240 171 252', // fuchsia-300
-        lightDark: '112 26 117', // fuchsia-900
+        primary: '147 51 234',
+        primaryHover: '126 34 206',
+        light: '243 232 255',
+        primaryDark: '232 121 249',
+        primaryDarkHover: '240 171 252',
+        lightDark: '112 26 117',
       },
       green: {
-        // Light mode - standard green
-        primary: '22 163 74', // green-600
-        primaryHover: '21 128 61', // green-700
-        light: '220 252 231', // green-100
-        // Dark mode - lime/chartreuse
-        primaryDark: '163 230 53', // lime-400 - neon lime
-        primaryDarkHover: '190 242 100', // lime-300
-        lightDark: '54 83 20', // lime-900
+        primary: '22 163 74',
+        primaryHover: '21 128 61',
+        light: '220 252 231',
+        primaryDark: '163 230 53',
+        primaryDarkHover: '190 242 100',
+        lightDark: '54 83 20',
       },
       orange: {
-        // Light mode - standard orange
-        primary: '234 88 12', // orange-600
-        primaryHover: '194 65 12', // orange-700
-        light: '254 243 199', // orange-100
-        // Dark mode - amber/gold
-        primaryDark: '251 191 36', // amber-400 - rich gold
-        primaryDarkHover: '252 211 77', // amber-300
-        lightDark: '120 53 15', // amber-900
+        primary: '234 88 12',
+        primaryHover: '194 65 12',
+        light: '254 243 199',
+        primaryDark: '251 191 36',
+        primaryDarkHover: '252 211 77',
+        lightDark: '120 53 15',
       },
       pink: {
-        // Light mode - standard pink
-        primary: '219 39 119', // pink-600
-        primaryHover: '190 24 93', // pink-700
-        light: '252 231 243', // pink-100
-        // Dark mode - rose/coral
-        primaryDark: '251 113 133', // rose-400 - coral pink
-        primaryDarkHover: '253 164 175', // rose-300
-        lightDark: '136 19 55', // rose-900
+        primary: '219 39 119',
+        primaryHover: '190 24 93',
+        light: '252 231 243',
+        primaryDark: '251 113 133',
+        primaryDarkHover: '253 164 175',
+        lightDark: '136 19 55',
       },
     };
 
@@ -103,7 +132,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     root.style.setProperty('--color-accent-primary-dark-hover', colors.primaryDarkHover);
     root.style.setProperty('--color-accent-light', colors.light);
     root.style.setProperty('--color-accent-light-dark', colors.lightDark);
-  }, [theme, accentColor]);
+  }, [theme, accentColor, isDark]);
 
   return (
     <ThemeContext.Provider value={{ theme, accentColor, setTheme, setAccentColor, isDark }}>
