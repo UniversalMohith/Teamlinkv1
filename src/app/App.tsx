@@ -210,7 +210,7 @@ export default function App() {
         )}
         {currentPage === 'kanban' && currentUser && (
           <KanbanBoard 
-            user={currentUser}
+            user={transformUserForProfile(currentUser)}
             projectId={selectedProject}
             onBack={() => navigateTo('dashboard')}
             onOpenChat={handleTeamSelect}
@@ -222,7 +222,7 @@ export default function App() {
         )}
         {currentPage === 'chat' && currentUser && (
           <ChatInterface 
-            user={currentUser}
+            user={transformUserForProfile(currentUser)}
             teamId={selectedTeam}
             onBack={() => navigateTo('dashboard')}
             onNavigateToProfile={() => navigateTo('profile')}
