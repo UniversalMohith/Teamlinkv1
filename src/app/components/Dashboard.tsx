@@ -111,6 +111,8 @@ export function Dashboard({
     }
   };
 
+  const hasProjects = projects.length > 0;
+
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
       {/* Sidebar */}
@@ -145,16 +147,38 @@ export function Dashboard({
               </svg>
               {!isSidebarCollapsed && 'Projects'}
             </button>
-            <button 
-              onClick={onNavigateToKanban}
-              className={`w-full px-4 py-2 hover:bg-white/10 rounded-lg text-left flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-2'}`}
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-                <rect x="4" y="4" width="6" height="16" rx="1"/>
-                <rect x="14" y="4" width="6" height="10" rx="1"/>
-              </svg>
-              {!isSidebarCollapsed && 'Boards'}
-            </button>
+
+            {/* Boards button — only enabled when at least one project exists */}
+            <div className="relative group">
+              <button
+                onClick={() => {
+                  if (hasProjects) {
+                    onProjectSelect(projects[0].id);
+                    onNavigateToKanban();
+                  } else {
+                    toast.info('Select a project first to open its board');
+                  }
+                }}
+                className={`w-full px-4 py-2 rounded-lg text-left flex items-center transition-colors
+                  ${isSidebarCollapsed ? 'justify-center' : 'gap-2'}
+                  ${hasProjects
+                    ? 'hover:bg-white/10 cursor-pointer'
+                    : 'opacity-50 cursor-not-allowed'
+                  }`}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                  <rect x="4" y="4" width="6" height="16" rx="1"/>
+                  <rect x="14" y="4" width="6" height="10" rx="1"/>
+                </svg>
+                {!isSidebarCollapsed && 'Boards'}
+              </button>
+              {/* Tooltip when no projects */}
+              {!hasProjects && !isSidebarCollapsed && (
+                <span className="absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                  Select a project first
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
