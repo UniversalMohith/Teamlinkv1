@@ -18,7 +18,9 @@ let _persistedTheme: Theme = 'auto';
 let _persistedAccent: AccentColor = 'blue';
 
 function getSystemDark(): boolean {
-  return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  return typeof window !== 'undefined'
+    ? window.matchMedia('(prefers-color-scheme: dark)').matches
+    : false;
 }
 
 function resolveIsDark(theme: Theme): boolean {
@@ -27,10 +29,78 @@ function resolveIsDark(theme: Theme): boolean {
   return getSystemDark();
 }
 
+// Compute initial isDark synchronously so React state matches the DOM
+// that the blocking inline script in index.html already set up.
+const _initialIsDark = resolveIsDark(_persistedTheme);
+
+// Apply synchronously before first render (belt-and-suspenders alongside index.html script)
+if (typeof document !== 'undefined') {
+  if (_initialIsDark) {
+    document.documentElement.classList.add('dark');
+  } else {
+    document.documentElement.classList.remove('dark');
+  }
+}
+
+const accentColors = {
+  blue: {
+    primary: '37 99 235',
+    primaryHover: '29 78 216',
+    light: '219 234 254',
+    primaryDark: '34 211 238',
+    primaryDarkHover: '103 232 249',
+    lightDark: '22 78 99',
+  },
+  purple: {
+    primary: '147 51 234',
+    primaryHover: '126 34 206',
+    light: '243 232 255',
+    primaryDark: '232 121 249',
+    primaryDarkHover: '240 171 252',
+    lightDark: '112 26 117',
+  },
+  green: {
+    primary: '22 163 74',
+    primaryHover: '21 128 61',
+    light: '220 252 231',
+    primaryDark: '163 230 53',
+    primaryDarkHover: '190 242 100',
+    lightDark: '54 83 20',
+  },
+  orange: {
+    primary: '234 88 12',
+    primaryHover: '194 65 12',
+    light: '254 243 199',
+    primaryDark: '251 191 36',
+    primaryDarkHover: '252 211 77',
+    lightDark: '120 53 15',
+  },
+  pink: {
+    primary: '219 39 119',
+    primaryHover: '190 24 93',
+    light: '252 231 243',
+    primaryDark: '251 113 133',
+    primaryDarkHover: '253 164 175',
+    lightDark: '136 19 55',
+  },
+};
+
+function applyAccentVars(accentColor: AccentColor) {
+  const root = document.documentElement;
+  const colors = accentColors[accentColor];
+  root.style.setProperty('--color-accent-primary', colors.primary);
+  root.style.setProperty('--color-accent-primary-hover', colors.primaryHover);
+  root.style.setProperty('--color-accent-primary-dark', colors.primaryDark);
+  root.style.setProperty('--color-accent-primary-dark-hover', colors.primaryDarkHover);
+  root.style.setProperty('--color-accent-light', colors.light);
+  root.style.setProperty('--color-accent-light-dark', colors.lightDark);
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, _setTheme] = useState<Theme>(_persistedTheme);
   const [accentColor, _setAccentColor] = useState<AccentColor>(_persistedAccent);
-  const [isDark, setIsDark] = useState(() => resolveIsDark(_persistedTheme));
+  // Initialise from the synchronously-resolved value so React matches the DOM on first render
+  const [isDark, setIsDark] = useState<boolean>(_initialIsDark);
   const themeRef = useRef(theme);
 
   // Listen for system preference changes when in 'auto' mode
@@ -40,12 +110,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       if (themeRef.current === 'auto') {
         const dark = e.matches;
         setIsDark(dark);
-        const root = document.documentElement;
         if (dark) {
-          root.classList.add('dark');
+          document.documentElement.classList.add('dark');
         } else {
-          root.classList.remove('dark');
+          document.documentElement.classList.remove('dark');
         }
+        // Re-apply accent vars so dark-mode variants update instantly
+        applyAccentVars(_persistedAccent);
       }
     };
     mq.addEventListener('change', handler);
@@ -58,11 +129,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     _setTheme(newTheme);
     const dark = resolveIsDark(newTheme);
     setIsDark(dark);
-    const root = document.documentElement;
     if (dark) {
-      root.classList.add('dark');
+      document.documentElement.classList.add('dark');
     } else {
-      root.classList.remove('dark');
+      document.documentElement.classList.remove('dark');
     }
   };
 
@@ -71,67 +141,18 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     _setAccentColor(color);
   };
 
-  // Apply accent color CSS variables whenever theme or accent changes
+  // Apply .dark class + accent CSS variables whenever theme / accent / isDark changes
   useEffect(() => {
     const root = document.documentElement;
 
-    // Sync dark class on mount and theme change
+    // Keep .dark class in sync (covers mount + every subsequent change)
     if (isDark) {
       root.classList.add('dark');
     } else {
       root.classList.remove('dark');
     }
 
-    const accentColors = {
-      blue: {
-        primary: '37 99 235',
-        primaryHover: '29 78 216',
-        light: '219 234 254',
-        primaryDark: '34 211 238',
-        primaryDarkHover: '103 232 249',
-        lightDark: '22 78 99',
-      },
-      purple: {
-        primary: '147 51 234',
-        primaryHover: '126 34 206',
-        light: '243 232 255',
-        primaryDark: '232 121 249',
-        primaryDarkHover: '240 171 252',
-        lightDark: '112 26 117',
-      },
-      green: {
-        primary: '22 163 74',
-        primaryHover: '21 128 61',
-        light: '220 252 231',
-        primaryDark: '163 230 53',
-        primaryDarkHover: '190 242 100',
-        lightDark: '54 83 20',
-      },
-      orange: {
-        primary: '234 88 12',
-        primaryHover: '194 65 12',
-        light: '254 243 199',
-        primaryDark: '251 191 36',
-        primaryDarkHover: '252 211 77',
-        lightDark: '120 53 15',
-      },
-      pink: {
-        primary: '219 39 119',
-        primaryHover: '190 24 93',
-        light: '252 231 243',
-        primaryDark: '251 113 133',
-        primaryDarkHover: '253 164 175',
-        lightDark: '136 19 55',
-      },
-    };
-
-    const colors = accentColors[accentColor];
-    root.style.setProperty('--color-accent-primary', colors.primary);
-    root.style.setProperty('--color-accent-primary-hover', colors.primaryHover);
-    root.style.setProperty('--color-accent-primary-dark', colors.primaryDark);
-    root.style.setProperty('--color-accent-primary-dark-hover', colors.primaryDarkHover);
-    root.style.setProperty('--color-accent-light', colors.light);
-    root.style.setProperty('--color-accent-light-dark', colors.lightDark);
+    applyAccentVars(accentColor);
   }, [theme, accentColor, isDark]);
 
   return (
