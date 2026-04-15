@@ -4,6 +4,8 @@ import { logger } from "npm:hono/logger";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import * as kv from "./kv_store.tsx";
 
+// v2 — redeploy trigger: /auth/oauth route active
+
 const app = new Hono();
 
 // Create Supabase client for admin operations
