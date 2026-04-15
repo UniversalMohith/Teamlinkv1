@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { ChatPopup } from './ChatPopup';
 import { ConnectionsPopup } from './ConnectionsPopup';
 import { useState, useEffect } from 'react';
-import { projectAPI, notificationsAPI, handleApiError } from '../../utils/api';
+import { projectAPI, notificationsAPI, connectionsAPI, handleApiError } from '../../utils/api';
 import { User } from '../../utils/supabase';
 import { toast } from 'sonner';
 
@@ -45,23 +45,38 @@ export function Dashboard({
   const [newProjectDueDate, setNewProjectDueDate] = useState('');
   const [isConnectionsPopupOpen, setIsConnectionsPopupOpen] = useState(false);
 
-  // Load projects and stats
+  // Badge counts
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
+  const [connectionsCount, setConnectionsCount] = useState(0);
+  const [unreadChatCount, setUnreadChatCount] = useState(0); // stays 0 until unread messages endpoint is added
+
   useEffect(() => {
     const loadData = async () => {
       try {
         setIsLoading(true);
         
-        // Load projects
-        const projectsData = await projectAPI.getAll(user.id);
-        setProjects(projectsData);
-        
-        // Load stats
-        const statsData = await projectAPI.getStats(user.id);
-        setStats(statsData);
-        
-        // Load recent notifications as activity
-        const notifications = await notificationsAPI.getRecent(user.id, 5);
-        setRecentActivity(notifications);
+        const [projectsData, statsData, notifications, friends] = await Promise.allSettled([
+          projectAPI.getAll(user.id),
+          projectAPI.getStats(user.id),
+          notificationsAPI.getAll(user.id),
+          connectionsAPI.getFriends(user.id),
+        ]);
+
+        if (projectsData.status === 'fulfilled') setProjects(projectsData.value);
+        if (statsData.status === 'fulfilled') setStats(statsData.value);
+
+        if (notifications.status === 'fulfilled') {
+          const all = notifications.value;
+          // Use recent 5 for activity feed
+          setRecentActivity(all.slice(0, 5));
+          // Count unread
+          const unread = all.filter((n: any) => !n.read && !n.is_read).length;
+          setUnreadNotifCount(unread);
+        }
+
+        if (friends.status === 'fulfilled') {
+          setConnectionsCount(friends.value.length);
+        }
       } catch (error) {
         handleApiError(error, 'Failed to load dashboard data');
       } finally {
@@ -210,33 +225,45 @@ export function Dashboard({
           </div>
 
           <div className="flex items-center gap-4">
+            {/* Chat button — unread count will be wired once endpoint is available */}
             <button 
               onClick={() => setIsChatPopupOpen(true)}
               className="relative p-2.5 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 hover:from-blue-100 hover:to-indigo-100 dark:hover:from-blue-900/30 dark:hover:to-indigo-900/30 transition-all duration-200 group"
             >
               <MessageCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform" />
-              <span className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-br from-green-400 to-green-600 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-lg animate-pulse">
-                3
-              </span>
+              {unreadChatCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-br from-green-400 to-green-600 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-lg">
+                  {unreadChatCount}
+                </span>
+              )}
             </button>
+
+            {/* Connections button — real friends count */}
             <button 
               onClick={() => setIsConnectionsPopupOpen(true)}
               className="relative p-2.5 rounded-xl bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20 hover:from-purple-100 hover:to-violet-100 dark:hover:from-purple-900/30 dark:hover:to-violet-900/30 transition-all duration-200 group"
             >
               <Users className="w-5 h-5 text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform" />
-              <span className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-br from-green-400 to-green-600 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-lg">
-                5
-              </span>
+              {connectionsCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-br from-green-400 to-green-600 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-lg">
+                  {connectionsCount}
+                </span>
+              )}
             </button>
+
+            {/* Notifications button — real unread count */}
             <button 
               onClick={onNavigateToNotifications}
               className="relative p-2.5 rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 hover:from-amber-100 hover:to-orange-100 dark:hover:from-amber-900/30 dark:hover:to-orange-900/30 transition-all duration-200 group"
             >
               <Bell className="w-5 h-5 text-amber-600 dark:text-amber-400 group-hover:scale-110 group-hover:rotate-12 transition-all" />
-              <span className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-br from-red-500 to-pink-600 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-lg">
-                5
-              </span>
+              {unreadNotifCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-br from-red-500 to-pink-600 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-lg">
+                  {unreadNotifCount > 99 ? '99+' : unreadNotifCount}
+                </span>
+              )}
             </button>
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-2 hover:opacity-80 transition-opacity">
