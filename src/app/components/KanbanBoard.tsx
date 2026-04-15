@@ -1,11 +1,9 @@
 import { useState, useEffect } from 'react';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { Plus, MoreVertical, Calendar, User, ArrowLeft, MessageSquare, Check, Clock, Users, Trash2 } from 'lucide-react';
+import { Plus, MoreVertical, Calendar, User, ArrowLeft, MessageSquare, Users, Trash2, Layout } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { Checkbox } from './ui/checkbox';
-import { ProfileDropdown } from './ProfileDropdown';
 import { ConnectionsPopup } from './ConnectionsPopup';
 import { taskAPI, handleApiError } from '../../utils/api';
 import { toast } from 'sonner';
@@ -46,9 +44,7 @@ interface KanbanBoardProps {
   onLogout: () => void;
 }
 
-const ItemTypes = {
-  TASK: 'task',
-};
+const ItemTypes = { TASK: 'task' };
 
 interface DraggableTaskProps {
   task: Task;
@@ -59,9 +55,7 @@ function DraggableTask({ task, onTaskClick }: DraggableTaskProps) {
   const [{ isDragging }, drag] = useDrag(() => ({
     type: ItemTypes.TASK,
     item: { id: task.id, status: task.status },
-    collect: (monitor) => ({
-      isDragging: !!monitor.isDragging(),
-    }),
+    collect: (monitor) => ({ isDragging: !!monitor.isDragging() }),
   }));
 
   return (
@@ -92,10 +86,7 @@ function DraggableTask({ task, onTaskClick }: DraggableTaskProps) {
       {task.labels && task.labels.length > 0 && (
         <div className="flex gap-1 mt-2">
           {task.labels.map((label, idx) => (
-            <span
-              key={idx}
-              className="px-2 py-1 bg-accent-light dark:bg-accent-light text-accent dark:text-accent text-xs rounded"
-            >
+            <span key={idx} className="px-2 py-1 bg-accent-light dark:bg-accent-light text-accent dark:text-accent text-xs rounded">
               {label}
             </span>
           ))}
@@ -116,13 +107,9 @@ function DroppableColumn({ column, onDrop, onTaskClick, onAddTask }: DroppableCo
   const [{ isOver }, drop] = useDrop(() => ({
     accept: ItemTypes.TASK,
     drop: (item: { id: string; status: string }) => {
-      if (item.status !== column.id) {
-        onDrop(item.id, column.id);
-      }
+      if (item.status !== column.id) onDrop(item.id, column.id);
     },
-    collect: (monitor) => ({
-      isOver: !!monitor.isOver(),
-    }),
+    collect: (monitor) => ({ isOver: !!monitor.isOver() }),
   }));
 
   const statusColors = {
@@ -167,6 +154,26 @@ function DroppableColumn({ column, onDrop, onTaskClick, onAddTask }: DroppableCo
   );
 }
 
+function ColumnSkeleton() {
+  return (
+    <div className="flex-shrink-0 w-80 bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 animate-pulse">
+      <div className="flex items-center gap-2 mb-4">
+        <div className="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded" />
+        <div className="h-5 w-6 bg-gray-200 dark:bg-gray-700 rounded-full" />
+      </div>
+      <div className="space-y-3">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+            <div className="h-4 w-3/4 bg-gray-200 dark:bg-gray-700 rounded mb-2" />
+            <div className="h-3 w-full bg-gray-100 dark:bg-gray-700/50 rounded mb-1" />
+            <div className="h-3 w-2/3 bg-gray-100 dark:bg-gray-700/50 rounded" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToProfile, onNavigateToSettings, onNavigateToNotifications, onLogout }: KanbanBoardProps) {
   const [columns, setColumns] = useState<Column[]>([
     { id: 'todo', title: 'To Do', tasks: [] },
@@ -181,42 +188,34 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Controlled detail panel state
   const [detailTitle, setDetailTitle] = useState('');
   const [detailDescription, setDetailDescription] = useState('');
   const [detailStatus, setDetailStatus] = useState<Task['status']>('todo');
   const [detailDueDate, setDetailDueDate] = useState('');
 
-  // Load tasks from backend
   useEffect(() => {
     const loadTasks = async () => {
       if (!projectId) {
         setIsLoading(false);
         return;
       }
-
       try {
         setIsLoading(true);
         const tasks = await taskAPI.getByProject(projectId);
-
-        const newColumns = [
+        setColumns([
           { id: 'todo', title: 'To Do', tasks: tasks.filter((t: any) => t.status === 'todo') },
           { id: 'in-progress', title: 'In Progress', tasks: tasks.filter((t: any) => t.status === 'in-progress') },
           { id: 'done', title: 'Done', tasks: tasks.filter((t: any) => t.status === 'done') },
-        ];
-
-        setColumns(newColumns);
+        ]);
       } catch (error) {
         handleApiError(error, 'Failed to load tasks');
       } finally {
         setIsLoading(false);
       }
     };
-
     loadTasks();
   }, [projectId]);
 
-  // Sync detail panel fields when a task is selected
   useEffect(() => {
     if (selectedTask) {
       setDetailTitle(selectedTask.title || '');
@@ -227,11 +226,9 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
   }, [selectedTask]);
 
   const handleDrop = async (taskId: string, newStatus: string) => {
-    // Optimistically update UI
     setColumns((prevColumns) => {
       const newColumns = prevColumns.map(col => ({ ...col, tasks: [...col.tasks] }));
       let movedTask: Task | null = null;
-
       newColumns.forEach((column) => {
         const taskIndex = column.tasks.findIndex((task) => task.id === taskId);
         if (taskIndex !== -1) {
@@ -239,18 +236,13 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
           column.tasks.splice(taskIndex, 1);
         }
       });
-
       if (movedTask) {
         const targetColumn = newColumns.find((column) => column.id === newStatus);
-        if (targetColumn) {
-          targetColumn.tasks.push(movedTask);
-        }
+        if (targetColumn) targetColumn.tasks.push(movedTask);
       }
-
       return newColumns;
     });
 
-    // If the detail panel is open for this task, sync its status
     if (selectedTask?.id === taskId) {
       setDetailStatus(newStatus as Task['status']);
       setSelectedTask(prev => prev ? { ...prev, status: newStatus as Task['status'] } : prev);
@@ -263,12 +255,11 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
       handleApiError(error, 'Failed to update task');
       if (projectId) {
         const tasks = await taskAPI.getByProject(projectId);
-        const newColumns = [
+        setColumns([
           { id: 'todo', title: 'To Do', tasks: tasks.filter((t: any) => t.status === 'todo') },
           { id: 'in-progress', title: 'In Progress', tasks: tasks.filter((t: any) => t.status === 'in-progress') },
           { id: 'done', title: 'Done', tasks: tasks.filter((t: any) => t.status === 'done') },
-        ];
-        setColumns(newColumns);
+        ]);
       }
     }
   };
@@ -279,11 +270,7 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
   };
 
   const handleAddTask = async (columnId: string) => {
-    if (!projectId) {
-      toast.error('No project selected');
-      return;
-    }
-
+    if (!projectId) { toast.error('No project selected'); return; }
     try {
       const newTask = await taskAPI.create({
         title: 'New Task',
@@ -291,15 +278,11 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
         status: columnId,
         description: 'Click to edit task details',
       });
-
       setColumns((prevColumns) =>
         prevColumns.map((column) =>
-          column.id === columnId
-            ? { ...column, tasks: [...column.tasks, newTask] }
-            : column
+          column.id === columnId ? { ...column, tasks: [...column.tasks, newTask] } : column
         )
       );
-
       toast.success('Task created successfully');
     } catch (error) {
       handleApiError(error, 'Failed to create task');
@@ -307,11 +290,7 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
   };
 
   const handleNewCardClick = async () => {
-    if (!projectId) {
-      toast.error('No project selected');
-      return;
-    }
-
+    if (!projectId) { toast.error('No project selected'); return; }
     try {
       const newTask = await taskAPI.create({
         title: 'New Task',
@@ -319,15 +298,11 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
         status: 'todo',
         description: 'Click to edit task details',
       });
-
       setColumns((prevColumns) =>
         prevColumns.map((column) =>
-          column.id === 'todo'
-            ? { ...column, tasks: [...column.tasks, newTask] }
-            : column
+          column.id === 'todo' ? { ...column, tasks: [...column.tasks, newTask] } : column
         )
       );
-
       setSelectedTask(newTask);
       setShowTaskDetail(true);
       toast.success('Task created successfully');
@@ -340,56 +315,35 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
     if (!selectedTask) return;
     setIsSaving(true);
     try {
-      const updates = {
+      await taskAPI.update(selectedTask.id, {
         title: detailTitle,
         description: detailDescription,
         status: detailStatus,
         due_date: detailDueDate || null,
-      };
-
-      await taskAPI.update(selectedTask.id, updates);
-
-      // Update local columns state
+      });
       setColumns((prevColumns) =>
-        prevColumns.map((column) => ({
-          ...column,
-          tasks: column.tasks
-            .filter((t) => {
-              // If status changed, remove from old column
-              if (t.id === selectedTask.id && column.id !== detailStatus) return false;
-              return true;
-            })
-            .map((t) =>
-              t.id === selectedTask.id
-                ? { ...t, title: detailTitle, description: detailDescription, status: detailStatus, dueDate: detailDueDate }
-                : t
-            ),
-        })).map((column) => {
-          // If status changed, add to new column
-          if (column.id === detailStatus && !column.tasks.find(t => t.id === selectedTask.id)) {
-            return {
-              ...column,
-              tasks: [...column.tasks, {
-                ...selectedTask,
-                title: detailTitle,
-                description: detailDescription,
-                status: detailStatus,
-                dueDate: detailDueDate,
-              }],
-            };
-          }
-          return column;
-        })
+        prevColumns
+          .map((column) => ({
+            ...column,
+            tasks: column.tasks
+              .filter((t) => !(t.id === selectedTask.id && column.id !== detailStatus))
+              .map((t) =>
+                t.id === selectedTask.id
+                  ? { ...t, title: detailTitle, description: detailDescription, status: detailStatus, dueDate: detailDueDate }
+                  : t
+              ),
+          }))
+          .map((column) => {
+            if (column.id === detailStatus && !column.tasks.find(t => t.id === selectedTask.id)) {
+              return {
+                ...column,
+                tasks: [...column.tasks, { ...selectedTask, title: detailTitle, description: detailDescription, status: detailStatus, dueDate: detailDueDate }],
+              };
+            }
+            return column;
+          })
       );
-
-      setSelectedTask(prev => prev ? {
-        ...prev,
-        title: detailTitle,
-        description: detailDescription,
-        status: detailStatus,
-        dueDate: detailDueDate,
-      } : prev);
-
+      setSelectedTask(prev => prev ? { ...prev, title: detailTitle, description: detailDescription, status: detailStatus, dueDate: detailDueDate } : prev);
       toast.success('Task saved successfully');
     } catch (error) {
       handleApiError(error, 'Failed to save task');
@@ -403,14 +357,9 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
     setIsDeleting(true);
     try {
       await taskAPI.delete(selectedTask.id);
-
       setColumns((prevColumns) =>
-        prevColumns.map((column) => ({
-          ...column,
-          tasks: column.tasks.filter((t) => t.id !== selectedTask.id),
-        }))
+        prevColumns.map((column) => ({ ...column, tasks: column.tasks.filter((t) => t.id !== selectedTask.id) }))
       );
-
       setShowTaskDetail(false);
       setSelectedTask(null);
       toast.success('Task deleted');
@@ -429,12 +378,11 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
           <div className="p-4 flex items-center gap-2">
             <div className="w-8 h-8 bg-white rounded flex items-center justify-center">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path d="M3 3L21 12L3 21V3Z" fill="rgb(var(--color-accent-primary))"/>
+                <path d="M3 3L21 12L3 21V3Z" fill="rgb(var(--color-accent-primary))" />
               </svg>
             </div>
             <span className="font-semibold text-lg">TeamLink</span>
           </div>
-
           <div className="px-4 py-6">
             <h2 className="text-sm font-semibold mb-4">Kanban Board</h2>
             <div className="space-y-2">
@@ -444,7 +392,6 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
               </div>
             </div>
           </div>
-
           <div className="mt-auto p-4 border-t border-white/20">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-white/30 rounded-full flex items-center justify-center backdrop-blur-sm">
@@ -468,13 +415,8 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
               </Button>
               <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Kanban Board</h1>
             </div>
-
             <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onOpenChat('team-1')}
-              >
+              <Button variant="outline" size="sm" onClick={() => onOpenChat('team-1')}>
                 <MessageSquare className="w-4 h-4 mr-2" />
                 Team Chat
               </Button>
@@ -487,16 +429,13 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
                   5
                 </span>
               </button>
-              <Button size="sm" className="btn-accent" onClick={handleNewCardClick}>
+              <Button size="sm" className="btn-accent" onClick={handleNewCardClick} disabled={!projectId}>
                 <Plus className="w-4 h-4 mr-2" />
                 New Card
               </Button>
               <div className="flex -space-x-2 mr-3">
                 {['JL', 'SC', 'AR', 'MK'].map((initial, i) => (
-                  <div
-                    key={i}
-                    className="w-8 h-8 rounded-full border-2 border-white dark:border-gray-800 bg-accent-gradient flex items-center justify-center text-white text-xs font-medium"
-                  >
+                  <div key={i} className="w-8 h-8 rounded-full border-2 border-white dark:border-gray-800 bg-accent-gradient flex items-center justify-center text-white text-xs font-medium">
                     {initial}
                   </div>
                 ))}
@@ -504,19 +443,41 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
             </div>
           </header>
 
-          {/* Kanban Board */}
+          {/* Board area */}
           <div className="flex-1 overflow-x-auto p-6">
-            <div className="flex gap-4 h-full">
-              {columns.map((column) => (
-                <DroppableColumn
-                  key={column.id}
-                  column={column}
-                  onDrop={handleDrop}
-                  onTaskClick={handleTaskClick}
-                  onAddTask={handleAddTask}
-                />
-              ))}
-            </div>
+            {isLoading ? (
+              <div className="flex gap-4 h-full">
+                <ColumnSkeleton />
+                <ColumnSkeleton />
+                <ColumnSkeleton />
+              </div>
+            ) : !projectId ? (
+              <div className="flex flex-col items-center justify-center h-full text-center">
+                <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
+                  <Layout className="w-8 h-8 text-gray-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No project selected</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 max-w-xs mb-6">
+                  Go back to the dashboard and open a project to view its Kanban board.
+                </p>
+                <Button variant="outline" onClick={onBack}>
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back to Dashboard
+                </Button>
+              </div>
+            ) : (
+              <div className="flex gap-4 h-full">
+                {columns.map((column) => (
+                  <DroppableColumn
+                    key={column.id}
+                    column={column}
+                    onDrop={handleDrop}
+                    onTaskClick={handleTaskClick}
+                    onAddTask={handleAddTask}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -525,30 +486,17 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
           <div className="w-96 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 p-6 overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Task Details</h2>
-              <button
-                onClick={() => setShowTaskDetail(false)}
-                className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-              >
+              <button onClick={() => setShowTaskDetail(false)} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
                 ✕
               </button>
             </div>
-
             <div className="space-y-6">
               <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">
-                  Title
-                </label>
-                <Input
-                  value={detailTitle}
-                  onChange={(e) => setDetailTitle(e.target.value)}
-                  className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                />
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">Title</label>
+                <Input value={detailTitle} onChange={(e) => setDetailTitle(e.target.value)} className="dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
               </div>
-
               <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">
-                  Description
-                </label>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">Description</label>
                 <textarea
                   className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg resize-none dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                   rows={4}
@@ -557,11 +505,8 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
                   placeholder="Add description..."
                 />
               </div>
-
               <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">
-                  Status
-                </label>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">Status</label>
                 <select
                   className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
                   value={detailStatus}
@@ -572,25 +517,12 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
                   <option value="done">Done</option>
                 </select>
               </div>
-
               <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">
-                  Due Date
-                </label>
-                <Input
-                  type="date"
-                  value={detailDueDate}
-                  onChange={(e) => setDetailDueDate(e.target.value)}
-                  className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                />
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">Due Date</label>
+                <Input type="date" value={detailDueDate} onChange={(e) => setDetailDueDate(e.target.value)} className="dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
               </div>
-
               <div className="pt-4 border-t border-gray-200 dark:border-gray-700 flex flex-col gap-3">
-                <Button
-                  className="w-full btn-accent"
-                  onClick={handleSaveTask}
-                  disabled={isSaving}
-                >
+                <Button className="w-full btn-accent" onClick={handleSaveTask} disabled={isSaving}>
                   {isSaving ? 'Saving...' : 'Save Changes'}
                 </Button>
                 <Button
@@ -608,7 +540,6 @@ export function KanbanBoard({ user, projectId, onBack, onOpenChat, onNavigateToP
         )}
       </div>
 
-      {/* Connections Popup */}
       <ConnectionsPopup
         user={user}
         isOpen={isConnectionsPopupOpen}
