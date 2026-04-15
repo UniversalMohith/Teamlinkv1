@@ -5,6 +5,8 @@ import { Label } from './ui/label';
 import { createClient } from '@supabase/supabase-js';
 import { projectId, publicAnonKey } from '../../../utils/supabase/info';
 
+const APP_URL = 'https://pkwhfxqthilkqgbcqhjh.supabase.co';
+
 interface LoginPageProps {
   onLogin: (email: string, password: string) => Promise<void>;
   onSignup: (email: string, password: string, firstName: string, lastName: string) => Promise<void>;
@@ -177,7 +179,7 @@ export function LoginPage({ onLogin, onSignup, onOAuthLogin, onBack }: LoginPage
       );
 
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin + window.location.pathname,
+        redirectTo: APP_URL,
       });
 
       if (error) throw error;
@@ -231,14 +233,10 @@ export function LoginPage({ onLogin, onSignup, onOAuthLogin, onBack }: LoginPage
         publicAnonKey
       );
 
-      // Get the current URL without any hash or query params
-      const currentUrl = window.location.origin + window.location.pathname;
-
-      // Do not forget to complete setup at https://supabase.com/docs/guides/auth/social-login/auth-google
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: currentUrl,
+          redirectTo: APP_URL,
         },
       });
 
@@ -262,14 +260,10 @@ export function LoginPage({ onLogin, onSignup, onOAuthLogin, onBack }: LoginPage
         publicAnonKey
       );
 
-      // Get the current URL without any hash or query params
-      const currentUrl = window.location.origin + window.location.pathname;
-
-      // Do not forget to complete setup at https://supabase.com/docs/guides/auth/social-login/auth-facebook
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'facebook',
         options: {
-          redirectTo: currentUrl,
+          redirectTo: APP_URL,
         },
       });
 
@@ -485,7 +479,7 @@ export function LoginPage({ onLogin, onSignup, onOAuthLogin, onBack }: LoginPage
                   />
                   <path
                     fill="#EA4335"
-                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                   />
                 </svg>
                 Continue with Google
