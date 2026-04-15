@@ -5,7 +5,7 @@ import { Label } from './ui/label';
 import { createClient } from '@supabase/supabase-js';
 import { projectId, publicAnonKey } from '../../../utils/supabase/info';
 
-const APP_URL = 'https://pkwhfxqthilkqgbcqhjh.supabase.co';
+const APP_URL = 'https://teamlinkv1-h88xmyn9y-universalmohiths-projects.vercel.app/';
 
 interface LoginPageProps {
   onLogin: (email: string, password: string) => Promise<void>;
